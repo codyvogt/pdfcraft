@@ -8,6 +8,20 @@ pub use pdfcraft_organize::OverlayOptions;
 
 use crate::{DocId, Edit, EditError, Markup, NewAnnotation, NoteIcon, Session, Shape};
 
+/// What automatic alignment found: the new pages' placement and how much ink it lines up.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AutoAlignment {
+    pub transform: [f64; 6],
+    /// The share of the new page's ink that lands on the old page's ink, 0–1.
+    pub score: f64,
+}
+
+/// Automatic alignment renders the old page at about this many pixels on its longer side.
+const ALIGN_SIDE: f32 = 2000.0;
+
+/// Below this share of ink lined up, automatic alignment gives up.
+const MIN_ALIGN_SCORE: f64 = 0.5;
+
 /// Acrobat's compare colours: replaced blue, inserted green, deleted red.
 pub fn colour(kind: Kind) -> crate::Rgb {
     match kind {
@@ -108,6 +122,57 @@ impl Session {
         };
         let (o, n) = (flip(old, old_page, old_points)?, flip(new, new_page, new_points)?);
         Ok(pdfcraft_organize::alignment(&o, &n)?)
+    }
+
+    /// Automatic alignment for Overlay Pages: renders page `old_page` of `old` and `new_page` of
+    /// `new` at the same resolution and finds the shift, scale and slight turn that best line
+    /// the new one up with the old (see [`pdfcraft_compare::auto_align`]). Returns the placement
+    /// for [`OverlayOptions::new_transform`] and the share of the new page's ink that then lands
+    /// on the old page's (0–1). Fails when either page is blank, or no placement lines up even
+    /// half of the ink (different sheets, or turned too far: pick points instead).
+    pub fn overlay_auto_alignment(&self, (old, old_page): (DocId, usize), (new, new_page): (DocId, usize)) -> Result<AutoAlignment, EditError> {
+        let render = |id: DocId, page: usize, scale: f32| -> Result<(pdfcraft_render::RenderedPage, f64, f64), EditError> {
+            let doc = self.get(id).ok_or(EditError::NoDocument)?;
+            let info = doc.info.pages.get(page).ok_or(pdfcraft_organize::OrganizeError::NoSuchPage(page))?;
+            let mut r = pdfcraft_render::PageRenderer::new(
+                doc.bytes.clone(),
+                pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(Arc::from), ..Default::default() },
+            );
+            let out = r.render(pdfcraft_render::RenderRequest { page, scale, ..Default::default() });
+            match out.error.clone() {
+                Some(e) => Err(pdfcraft_organize::OrganizeError::Invalid(format!("page {} of {} couldn't be drawn: {e}", page + 1, doc.name)).into()),
+                // Pixels per point as drawn (the renderer may cap very large pages), and the
+                // page height in points.
+                None => {
+                    let k = f64::from(out.width) / f64::from(info.width.max(1e-3));
+                    Ok((out, k, f64::from(info.height)))
+                }
+            }
+        };
+        // About ALIGN_SIDE pixels along the old page's longer side; the new page at the same
+        // resolution, so a difference in plotting scale shows.
+        let size = self.get(old).and_then(|d| d.info.pages.get(old_page)).map_or(792.0, |p| p.width.max(p.height).max(1.0));
+        let scale = (ALIGN_SIDE / size).clamp(0.1, 4.0);
+        let (a, ka, ha) = render(old, old_page, scale)?;
+        let (b, kb, hb) = render(new, new_page, scale)?;
+        if !(ka > 0.0 && kb > 0.0 && ka.is_finite() && kb.is_finite()) {
+            return Err(pdfcraft_organize::OrganizeError::Invalid("a page couldn't be drawn to line up".into()).into());
+        }
+        let bad = |why: &str| EditError::from(pdfcraft_organize::OrganizeError::Invalid(why.to_string()));
+        let fit = pdfcraft_compare::auto_align((&a.rgba, a.width, a.height), (&b.rgba, b.width, b.height))
+            .ok_or_else(|| bad("a page has too little drawn on it to line up automatically"))?;
+        if fit.score < MIN_ALIGN_SCORE {
+            return Err(bad("the pages don't line up automatically (are they the same sheet?): pick matching points instead"));
+        }
+        // Three corners of the new page (overlay space: points, y up), carried through the fit
+        // in pixels (y down) to the old page, fix the placement exactly.
+        let new_pts = [[0.0, 0.0], [f64::from(b.width) / kb, 0.0], [0.0, hb]];
+        let old_pts = new_pts.map(|[x, y]| {
+            let [px, py] = fit.apply([x * kb, (hb - y) * kb]);
+            [px / ka, ha - py / ka]
+        });
+        let transform = pdfcraft_organize::alignment(&old_pts, &new_pts)?;
+        Ok(AutoAlignment { transform, score: fit.score })
     }
 
     /// The compare report as a new PDF (not opened).

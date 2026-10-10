@@ -2135,7 +2135,6 @@ key	Space	空格
 	Remove {n} pages	删除 {n} 页
 	Overlay Pages	叠加页面
 	Lines both versions share come out dark; lines only one has keep its colour.	两个版本共有的线条显示为深色；只在一个版本中的线条保留该版本的颜色。
-	Line up by matching points	按对应点对齐
 	Points on each file:	每个文件的点数：
 	One point shifts the new pages.	一个点：平移新页面。
 	Two points shift, turn and scale the new pages evenly.	两个点：平移、旋转并等比缩放新页面。
@@ -2154,3 +2153,8 @@ key	Space	空格
 	Stopped picking alignment points	已停止选取对齐点
 	Pick the alignment points on both files first	请先在两个文件上选取对齐点
 	Snap to line ends and crossings	吸附到线条端点和交点
+	Line up the new pages:	对齐新页面：
+	Automatically	自动
+	By matching points	按对应点
+	Lower-left corners together	左下角对齐
+	 · {p}% of the lines match	 · {p}% 的线条吻合

@@ -2171,7 +2171,6 @@ key	Space	Espace
 	Remove {n} pages	Retirer {n} pages
 	Overlay Pages	Superposer les pages
 	Lines both versions share come out dark; lines only one has keep its colour.	Les traits communs aux deux versions apparaissent foncés ; ceux d’une seule version gardent sa couleur.
-	Line up by matching points	Aligner par points correspondants
 	Points on each file:	Points sur chaque fichier :
 	One point shifts the new pages.	Un point décale les nouvelles pages.
 	Two points shift, turn and scale the new pages evenly.	Deux points décalent, font pivoter et mettent à l’échelle les nouvelles pages.
@@ -2190,3 +2189,8 @@ key	Space	Espace
 	Stopped picking alignment points	Choix des points d’alignement arrêté
 	Pick the alignment points on both files first	Choisissez d’abord les points d’alignement dans les deux fichiers
 	Snap to line ends and crossings	Accrocher aux extrémités et croisements des traits
+	Line up the new pages:	Aligner les nouvelles pages :
+	Automatically	Automatiquement
+	By matching points	Par points correspondants
+	Lower-left corners together	Coins inférieurs gauches ensemble
+	 · {p}% of the lines match	 · {p} % des traits correspondent

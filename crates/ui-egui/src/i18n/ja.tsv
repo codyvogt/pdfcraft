@@ -2171,7 +2171,6 @@ key	Space	スペース
 	Remove {n} pages	{n} ページを削除
 	Overlay Pages	ページを重ね合わせ
 	Lines both versions share come out dark; lines only one has keep its colour.	両方の版に共通する線は濃く、片方だけの線はその版の色で表示されます。
-	Line up by matching points	対応する点で位置を合わせる
 	Points on each file:	各ファイルの点の数：
 	One point shifts the new pages.	1 点：新しいページを移動します。
 	Two points shift, turn and scale the new pages evenly.	2 点：新しいページを移動・回転し、縦横同率で拡大縮小します。
@@ -2190,3 +2189,8 @@ key	Space	スペース
 	Stopped picking alignment points	位置合わせの点の選択を中止しました
 	Pick the alignment points on both files first	先に両方のファイルで位置合わせの点を選択してください
 	Snap to line ends and crossings	線の端点と交点にスナップ
+	Line up the new pages:	新しいページの位置合わせ：
+	Automatically	自動
+	By matching points	対応する点で
+	Lower-left corners together	左下隅をそろえる
+	 · {p}% of the lines match	 · 線の {p}% が一致

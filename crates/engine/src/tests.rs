@@ -2085,6 +2085,62 @@ fn overlay_shows_old_only_red_new_only_blue_and_shared_dark() {
     assert!(s.compare_overlay(old, new, &flat).is_err());
 }
 
+/// A one-page US Letter PDF drawing `content`.
+fn letter_page(content: &str) -> Arc<Vec<u8>> {
+    let page = one_page(content);
+    // Same file with a letter-size media box (both boxes are written with the same digits'
+    // count, so the cross-reference offsets stay right).
+    let s = String::from_utf8_lossy(&page).replace("/MediaBox [0 0 100 100]", "/MediaBox [0 0 612 792]");
+    Arc::new(s.into_bytes())
+}
+
+/// A floor plan: rooms, a diagonal and a slanted wall, 2 pt lines.
+const PLAN: &str = "2 w 60 92 m 520 92 l 520 742 l 60 742 l h S 60 562 m 250 562 l 250 742 l S 250 462 m 520 462 l S \
+                    330 92 m 330 362 l S 395 182 m 470 182 l 470 272 l 395 272 l h S 330 362 m 520 462 l S 90 392 m 210 532 l S";
+
+#[test]
+fn automatic_alignment_finds_shift_and_scale() {
+    let mut s = Session::new();
+    let old = s.open("v1.pdf", None, letter_page(PLAN), None).unwrap();
+    // Moved 12 pt right and 7 pt down, with a revision.
+    let shifted = s.open("v2.pdf", None, letter_page(&format!("q 1 0 0 1 12 -7 cm {PLAN} Q 2 w 100 150 m 300 250 l S")), None).unwrap();
+    // Plotted at 80% and moved.
+    let smaller = s.open("v3.pdf", None, letter_page(&format!("q 0.8 0 0 0.8 30 40 cm {PLAN} Q")), None).unwrap();
+    // Placements agree when they put the corners of a sheet within 0.6 pt of each other (about a
+    // pixel of the render alignment works from).
+    let close = |m: [f64; 6], want: [f64; 6]| {
+        let at = |m: [f64; 6], p: [f64; 2]| [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+        [[50.0, 50.0], [560.0, 50.0], [50.0, 740.0], [560.0, 740.0]].iter().all(|p| {
+            let (a, b) = (at(m, *p), at(want, *p));
+            (a[0] - b[0]).hypot(a[1] - b[1]) < 0.6
+        })
+    };
+    let found = s.overlay_auto_alignment((old, 0), (shifted, 0)).unwrap();
+    assert!(close(found.transform, [1.0, 0.0, 0.0, 1.0, -12.0, 7.0]), "{found:?}");
+    assert!(found.score > 0.8, "{found:?}");
+    // p = 0.8 q + (30, 40) is undone by q = 1.25 p − (37.5, 50).
+    let found = s.overlay_auto_alignment((old, 0), (smaller, 0)).unwrap();
+    assert!(close(found.transform, [1.25, 0.0, 0.0, 1.25, -37.5, -50.0]), "{found:?}");
+
+    // A blank page, or a drawing that isn't the same sheet, is refused with a reason.
+    let blank = s.open("blank.pdf", None, letter_page(""), None).unwrap();
+    let other = s.open("other.pdf", None, letter_page("2 w 100 100 m 180 130 l 120 190 l h S"), None).unwrap();
+    for id in [blank, other] {
+        let e = s.overlay_auto_alignment((old, 0), (id, 0)).unwrap_err().to_string();
+        assert!(e.contains("line up"), "{e}");
+    }
+    assert!(s.overlay_auto_alignment((old, 2), (shifted, 0)).is_err(), "no such page");
+
+    // Two versions of a line of text, half rewritten: already in place, so either they are
+    // found in place or refused, never moved and shrunk to make the changed words overlap.
+    let v1 = s.create_from_text("t", "Delivery within five days. Returns accepted.").unwrap();
+    let v2 = s.create_from_text("t", "Delivery within three days. Returns accepted for a week.").unwrap();
+    let (t1, t2) = (s.open("t1.pdf", None, v1, None).unwrap(), s.open("t2.pdf", None, v2, None).unwrap());
+    if let Ok(found) = s.overlay_auto_alignment((t1, 0), (t2, 0)) {
+        assert!(close(found.transform, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]), "{found:?}");
+    }
+}
+
 #[test]
 fn aligned_overlay_lines_up_a_shifted_sheet() {
     // The same strip, plotted 10 pt further right on the new sheet.

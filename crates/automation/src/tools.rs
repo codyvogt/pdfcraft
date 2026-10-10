@@ -885,15 +885,7 @@ pub fn tools() -> Vec<ToolDef> {
                     "offset": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Shift the new pages by [dx, dy] points (right, up) to line them up." },
                     "matrix": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6, "description": "Place the new pages with this PDF matrix [a b c d e f] instead (overrides offset)." },
                     "align": {
-                        "type": "object",
-                        "description": "Line the versions up from matching points (overrides offset and matrix): the same 1–3 features picked on each, as [x, y] points on the displayed page from its top-left corner. One pair shifts, two also turn and scale evenly, three fit any stretch.",
-                        "properties": {
-                            "old": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "minItems": 1, "maxItems": 3 },
-                            "new": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "minItems": 1, "maxItems": 3 },
-                            "old_page": { "type": "integer", "minimum": 1, "description": "Page the old points are on (default 1)." },
-                            "new_page": { "type": "integer", "minimum": 1, "description": "Page the new points are on (default 1)." },
-                        },
-                        "required": ["old", "new"],
+                        "description": "Line the versions up (overrides offset and matrix). \"auto\" (or {\"auto\": true, \"old_page\": 1, \"new_page\": 1}) finds the shift, scale and slight turn from the drawings themselves and reports how much ink it lines up as matched (0–1); it fails when the pages aren't the same sheet. Or matching points: {\"old\": [[x, y], …], \"new\": [[x, y], …], \"old_page\": 1, \"new_page\": 1}, the same 1–3 features on each, as points on the displayed page from its top-left corner; one pair shifts, two also turn and scale evenly, three fit any stretch. Pages are 1-based, page 1 by default.",
                     },
                 }),
                 &["doc", "other", "path"],

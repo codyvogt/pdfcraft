@@ -3,7 +3,7 @@
 //! `pdfcraft_organize::overlay`).
 
 use egui::{Align, Color32, Layout};
-use pdfcraft_engine::compare::OverlayOptions;
+use pdfcraft_engine::compare::{AutoAlignment, OverlayOptions};
 use pdfcraft_engine::measure::snap::{Geometry, SnapKind, SnapOptions};
 use pdfcraft_engine::{DocId, Document};
 
@@ -23,8 +23,10 @@ pub struct OverlaySetup {
     pub new: DocId,
     pub old_colour: Color32,
     pub new_colour: Color32,
-    /// Line the versions up by matching points (otherwise their lower-left corners meet).
-    pub align: bool,
+    /// How the new pages are placed on the old ones.
+    pub line_up: LineUp,
+    /// Automatic alignment's result, for the documents' edit generations it was found at.
+    pub auto: Option<((u64, u64), Result<AutoAlignment, String>)>,
     /// Points to pick on each version (1–3).
     pub count: usize,
     /// Points picked: (page, view-space point), on one page per version.
@@ -34,6 +36,17 @@ pub struct OverlaySetup {
     pub picking: Option<Side>,
     /// Snap picked points to line ends and crossings in the drawing.
     pub snap: bool,
+}
+
+/// How Overlay Pages places the new pages on the old ones.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineUp {
+    /// Found from the drawings (shift, scale, slight turn).
+    Auto,
+    /// Fitted to matching points picked on each version.
+    Points,
+    /// Lower-left corners together, as drawn.
+    Corners,
 }
 
 /// Picked points are drawn in these colours on the page.
@@ -46,7 +59,8 @@ impl OverlaySetup {
             new,
             old_colour: Color32::from_rgb(0xFF, 0, 0),
             new_colour: Color32::from_rgb(0, 0, 0xFF),
-            align: false,
+            line_up: LineUp::Auto,
+            auto: None,
             count: 2,
             old_points: Vec::new(),
             new_points: Vec::new(),
@@ -59,11 +73,14 @@ impl OverlaySetup {
         self.old_points.len() == self.count && self.new_points.len() == self.count
     }
 
-    /// The new pages' placement: lower-left corners together, or fitted to the picked points
-    /// (`None` while points are still missing).
+    /// The new pages' placement: lower-left corners together, found automatically (see
+    /// [`PdfCraftApp::refresh_auto_alignment`]), or fitted to the picked points. `None` while
+    /// points are still missing or automatic alignment hasn't run.
     pub fn placement(&self, app: &PdfCraftApp) -> Option<Result<[f64; 6], String>> {
-        if !self.align {
-            return Some(Ok(OverlayOptions::default().new_transform));
+        match self.line_up {
+            LineUp::Corners => return Some(Ok(OverlayOptions::default().new_transform)),
+            LineUp::Auto => return self.auto.as_ref().map(|(_, r)| r.as_ref().map(|a| a.transform).map_err(Clone::clone)),
+            LineUp::Points => {}
         }
         if !self.picked() {
             return None;
@@ -111,6 +128,7 @@ pub enum DialogAction {
 pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Option<DialogAction> {
     ui.label(egui::RichText::new(tl!("Overlay Pages")).font(theme::semibold(18.0)));
     ui.add_space(8.0);
+    app.refresh_auto_alignment();
     let Some(setup) = app.overlay.as_ref() else { return Some(DialogAction::Cancel) };
     let name = |id: DocId| app.session.get(id).map(|d| d.name.clone());
     let (Some(old_name), Some(new_name)) = (name(setup.old), name(setup.new)) else { return Some(DialogAction::Cancel) };
@@ -130,8 +148,24 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
     ui.add_space(4.0);
     ui.label(egui::RichText::new(tl!("Lines both versions share come out dark; lines only one has keep its colour.")).small().color(t.text_muted));
     ui.add_space(10.0);
-    ui.checkbox(&mut setup.align, tl!("Line up by matching points"));
-    if setup.align {
+    ui.label(tl!("Line up the new pages:"));
+    ui.radio_value(&mut setup.line_up, LineUp::Auto, tl!("Automatically"));
+    if setup.line_up == LineUp::Auto {
+        ui.indent("overlay-auto", |ui| match setup.auto.as_ref().map(|(_, r)| r) {
+            Some(Ok(found)) => {
+                let matched = crate::i18n::fmt(tl!(" · {p}% of the lines match"), &[("p", &format!("{:.0}", found.score * 100.0))]);
+                ui.label(egui::RichText::new(describe(found.transform) + &matched).color(t.text_muted));
+            }
+            Some(Err(e)) => {
+                let red = ui.visuals().error_fg_color;
+                ui.label(egui::RichText::new(e).color(red));
+            }
+            None => {}
+        });
+    }
+    ui.radio_value(&mut setup.line_up, LineUp::Points, tl!("By matching points"));
+    ui.radio_value(&mut setup.line_up, LineUp::Corners, tl!("Lower-left corners together"));
+    if setup.line_up == LineUp::Points {
         ui.indent("overlay-align", |ui| {
             ui.horizontal(|ui| {
                 ui.label(tl!("Points on each file:"));
@@ -182,7 +216,11 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
     }
     ui.add_space(10.0);
     // The placement shown is for the points as they were when this frame started.
-    let can_create = !setup.align || (setup.picked() && matches!(placement, Some(Ok(_))));
+    let can_create = match setup.line_up {
+        LineUp::Corners => true,
+        LineUp::Auto => matches!(placement, Some(Ok(_))),
+        LineUp::Points => setup.picked() && matches!(placement, Some(Ok(_))),
+    };
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add_enabled_ui(can_create, |ui| widgets::pill_button(ui, tl!("Create overlay"), true)).inner.clicked() {
@@ -213,8 +251,28 @@ impl PdfCraftApp {
         }
     }
 
+    /// Automatic alignment for the dialog's pair of files (first pages), unless already found
+    /// for the documents as they are now. Rendering both pages takes a moment, so it runs once
+    /// per pair and edit.
+    pub fn refresh_auto_alignment(&mut self) {
+        let Some(setup) = self.overlay.as_ref() else { return };
+        if setup.line_up != LineUp::Auto {
+            return;
+        }
+        let generation = |id| self.session.get(id).map_or(0, |d| d.edit_generation());
+        let now = (generation(setup.old), generation(setup.new));
+        if setup.auto.as_ref().is_some_and(|(g, _)| *g == now) {
+            return;
+        }
+        let found = self.session.overlay_auto_alignment((setup.old, 0), (setup.new, 0)).map_err(|e| e.to_string());
+        if let Some(setup) = self.overlay.as_mut() {
+            setup.auto = Some((now, found));
+        }
+    }
+
     /// Make the overlay with the dialog's choices and open it.
     pub fn create_overlay(&mut self) {
+        self.refresh_auto_alignment();
         let Some(setup) = self.overlay.as_ref() else { return };
         let placement = match setup.placement(self) {
             Some(Ok(m)) => m,
@@ -235,7 +293,7 @@ impl PdfCraftApp {
     /// Start the Align Point tool on the old version.
     pub fn start_align_picking(&mut self) {
         let Some(setup) = self.overlay.as_mut() else { return };
-        setup.align = true;
+        setup.line_up = LineUp::Points;
         setup.old_points.clear();
         setup.new_points.clear();
         setup.picking = Some(Side::Old);

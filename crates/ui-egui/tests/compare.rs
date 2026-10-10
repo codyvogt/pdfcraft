@@ -39,6 +39,8 @@ fn compare_two_versions() {
     h.get_by_label("Overlay pages").click();
     h.run_steps(3);
     h.get_by_label("Overlay Pages");
+    h.get_by_label("Lower-left corners together").click();
+    h.run_steps(2);
     h.get_by_label("Create overlay").click();
     h.run_steps(3);
     let overlay = h.state().session.get(h.state().active_ids().unwrap().1).unwrap();
@@ -72,7 +74,7 @@ fn overlay_aligned_by_picked_points() {
     h.run_steps(3);
     h.get_by_label("Overlay pages").click();
     h.run_steps(3);
-    h.get_by_label("Line up by matching points").click();
+    h.get_by_label("By matching points").click();
     h.run_steps(2);
     h.get_by_label("Pick points…").click();
     h.run_steps(3);
@@ -125,6 +127,52 @@ fn drawing(content: &str) -> Vec<u8> {
     pdf
 }
 
+/// A floor plan: rooms, a diagonal and a slanted wall, 2 pt lines.
+const PLAN: &str = "2 w 60 92 m 520 92 l 520 742 l 60 742 l h S 60 562 m 250 562 l 250 742 l S 250 462 m 520 462 l S \
+                    330 92 m 330 362 l S 395 182 m 470 182 l 470 272 l 395 272 l h S 330 362 m 520 462 l S 90 392 m 210 532 l S";
+
+#[test]
+fn overlay_lines_up_automatically() {
+    // The new sheet: the plan moved 12 pt right and 7 pt down, with a revision.
+    let v1 = drawing(PLAN);
+    let v2 = drawing(&format!("q 1 0 0 1 12 -7 cm {PLAN} Q 2 w 100 150 m 300 250 l S"));
+    let blank = drawing("");
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.open_bytes("v1.pdf", None, v1.clone()).unwrap();
+        app.open_bytes("blank.pdf", None, blank.clone()).unwrap();
+        app.open_bytes("v2.pdf", None, v2.clone()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    let (old, blank, new) = (h.state().views[0].id, h.state().views[1].id, h.state().views[2].id);
+    // Automatic is the default: the dialog finds the shift as it opens.
+    h.state_mut().open_overlay_dialog(old, new);
+    h.run_steps(3);
+    let found = h.state().overlay.as_ref().unwrap().auto.as_ref().unwrap().1.clone().unwrap();
+    let m = found.transform;
+    assert!((m[4] + 12.0).abs() < 0.6 && (m[5] - 7.0).abs() < 0.6 && (m[0] - 1.0).abs() < 0.002, "{found:?}");
+    h.get_by_label_contains("of the lines match");
+    h.get_by_label("Create overlay").click();
+    h.run_steps(3);
+    assert_eq!(h.state().session.get(h.state().active_ids().unwrap().1).unwrap().name, "Overlay.pdf");
+
+    // A blank page can't be lined up: the reason shows and Create stays off until another
+    // choice is made.
+    h.state_mut().open_overlay_dialog(blank, new);
+    h.run_steps(3);
+    h.get_by_label_contains("too little drawn");
+    let before = h.state().views.len();
+    h.get_by_label("Create overlay").click();
+    h.run_steps(2);
+    assert_eq!(h.state().views.len(), before, "nothing was made");
+    h.get_by_label("Lower-left corners together").click();
+    h.run_steps(2);
+    h.get_by_label("Create overlay").click();
+    h.run_steps(3);
+    assert_eq!(h.state().views.len(), before + 1);
+}
+
 #[test]
 fn picked_points_snap_to_line_ends() {
     // An L of two lines with its corner at (100, 600); the new sheet draws it 10 pt right and
@@ -146,7 +194,7 @@ fn picked_points_snap_to_line_ends() {
     h.run_steps(3);
     h.get_by_label("Overlay pages").click();
     h.run_steps(3);
-    h.get_by_label("Line up by matching points").click();
+    h.get_by_label("By matching points").click();
     h.run_steps(2);
     assert!(h.state().overlay.as_ref().unwrap().snap, "snapping is on by default");
     h.get_by_label("Pick points…").click();
@@ -197,7 +245,8 @@ fn compare_panel_screenshot() {
 }
 
 /// Writes screenshots of Overlay Pages when PDFCRAFT_SHOT is set (for review): picking points
-/// (`…-pick.png`), the dialog with the fitted alignment (`…-dialog.png`) and the overlay
+/// (`…-pick.png`), the dialog lining up automatically (`…-auto.png`) and with the fitted points
+/// (`…-dialog.png`), and the overlay
 /// (`…-result.png`).
 #[test]
 fn overlay_screenshots() {
@@ -223,8 +272,9 @@ fn overlay_screenshots() {
     h.state_mut().run_compare();
     h.run_steps(3);
     h.get_by_label("Overlay pages").click();
-    h.run_steps(3);
-    h.get_by_label("Line up by matching points").click();
+    settle(&mut h);
+    h.render().unwrap().save(name("auto")).unwrap();
+    h.get_by_label("By matching points").click();
     h.run_steps(2);
     h.get_by_label("Pick points…").click();
     h.run_steps(2);

@@ -3080,9 +3080,18 @@ fn comparing_documents_through_tools() {
     let align = json!({ "old": [[72, 72], [300, 72]], "new": [[80, 70], [308, 70]] });
     let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": v2, "other": v1, "path": "aligned.pdf", "align": align }));
     assert!(r["bytes"].as_u64().unwrap() > 0, "{r}");
-    for bad in
-        [json!({ "old": [[0, 0]], "new": [[0, 0], [5, 5]] }), json!({ "old": [[0, 0]] }), json!({ "old": [[0, 0]], "new": [[0, 0]], "new_page": 9 })]
-    {
+    // Automatic alignment of two copies of a page finds them already in place.
+    let copy = ok(&mut a, "doc_create", json!({ "from": "text", "text": "Rent is 900 per month. Pets are not allowed." }))["doc"].as_u64().unwrap();
+    let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": copy, "other": v1, "path": "auto.pdf", "align": "auto" }));
+    assert!(r["matched"].as_f64().unwrap() > 0.95, "{r}");
+    assert_eq!(r["placement"], json!([1.0, 0.0, 0.0, 1.0, 0.0, 0.0]), "{r}");
+    for bad in [
+        json!({ "old": [[0, 0]], "new": [[0, 0], [5, 5]] }),
+        json!({ "old": [[0, 0]] }),
+        json!({ "old": [[0, 0]], "new": [[0, 0]], "new_page": 9 }),
+        json!("sideways"),
+        json!({ "auto": true, "new_page": 5 }),
+    ] {
         assert!(a.call("doc_compare_overlay", &json!({ "doc": v2, "other": v1, "path": "bad.pdf", "align": bad })).is_err(), "{bad}");
     }
     assert_eq!(ok(&mut a, "doc_compare_mark", json!({ "doc": v2, "other": v1 }))["comments"], 3);

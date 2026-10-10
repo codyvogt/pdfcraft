@@ -431,8 +431,14 @@ impl Automation {
         if let Some(m) = a.nums::<6>("matrix")? {
             opts.new_transform = m;
         }
+        let mut matched = None;
         if let Some(align) = a.get("align") {
-            let wrong = || ToolError::InvalidArgs("align must be { old: [[x, y], …], new: [[x, y], …], old_page?, new_page? }".into());
+            let wrong = || {
+                ToolError::InvalidArgs(
+                    "align must be \"auto\", { auto: true, old_page?, new_page? } or { old: [[x, y], …], new: [[x, y], …], old_page?, new_page? }"
+                        .into(),
+                )
+            };
             let points = |key: &str| -> Result<Vec<[f64; 2]>> {
                 let list = align.get(key).and_then(Value::as_array).ok_or_else(wrong)?;
                 list.iter()
@@ -451,13 +457,27 @@ impl Automation {
                     Some(v) => v.as_u64().filter(|p| *p >= 1).and_then(|p| usize::try_from(p - 1).ok()).ok_or_else(wrong),
                 }
             };
-            let (op, np) = (points("old")?, points("new")?);
-            opts.new_transform = self.session.overlay_alignment((old, page("old_page")?, &op), (new, page("new_page")?, &np)).map_err(failed)?;
+            let auto = align.as_str() == Some("auto") || align.get("auto").and_then(Value::as_bool) == Some(true);
+            if auto {
+                let found = self.session.overlay_auto_alignment((old, page("old_page")?), (new, page("new_page")?)).map_err(failed)?;
+                opts.new_transform = found.transform;
+                matched = Some(found.score);
+            } else if align.is_object() {
+                let (op, np) = (points("old")?, points("new")?);
+                opts.new_transform = self.session.overlay_alignment((old, page("old_page")?, &op), (new, page("new_page")?, &np)).map_err(failed)?;
+            } else {
+                return Err(wrong());
+            }
         }
         let bytes = self.session.compare_overlay(old, new, &opts).map_err(failed)?;
         let path = self.resolve(a.str("path")?, true)?;
         write_atomic(&path, &bytes)?;
-        Ok(json!({ "path": path.to_string_lossy(), "bytes": bytes.len() }))
+        let placement = opts.new_transform.map(|v| (v * 10_000.0).round() / 10_000.0);
+        let mut out = json!({ "path": path.to_string_lossy(), "bytes": bytes.len(), "placement": placement });
+        if let (Some(score), Some(o)) = (matched, out.as_object_mut()) {
+            o.insert("matched".into(), json!((score * 1000.0).round() / 1000.0));
+        }
+        Ok(out)
     }
 
     pub(crate) fn doc_compare_mark(&mut self, a: &Args) -> Result<Value> {
