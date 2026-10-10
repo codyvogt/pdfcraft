@@ -2165,3 +2165,10 @@ key	Esc	Esc
 key	Home	Home
 key	End	Fine
 key	Space	Spazio
+	Grid view	Vista griglia
+	List view	Vista elenco
+	Files are combined in the order shown. Drag them to change it.	I file vengono combinati nell'ordine mostrato. Trascinali per cambiarlo.
+	Preview unavailable: {e}	Anteprima non disponibile: {e}
+	Pages: {k} of {n}	Pagine: {k} di {n}
+	Check the pages	Controlla le pagine
+	Switch to List view to change the pages it takes.	Passa alla vista elenco per cambiare le pagine incluse.
