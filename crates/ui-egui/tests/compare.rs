@@ -102,6 +102,76 @@ fn overlay_aligned_by_picked_points() {
     assert_eq!(overlay.name, "Overlay.pdf");
 }
 
+/// A one-page US Letter PDF drawing `content`.
+fn drawing(content: &str) -> Vec<u8> {
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << >> >>".into(),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+    ];
+    let mut pdf = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        pdf.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    pdf
+}
+
+#[test]
+fn picked_points_snap_to_line_ends() {
+    // An L of two lines with its corner at (100, 600); the new sheet draws it 10 pt right and
+    // 5 pt lower. In view space (y down from the top of a 792 pt page) the old corner is at
+    // (100, 192) and the old line's far end at (300, 192); the new ones at (110, 197) and
+    // (310, 197).
+    let v1 = drawing("1 w 100 600 m 300 600 l S 100 600 m 100 400 l S");
+    let v2 = drawing("1 w 110 595 m 310 595 l S 110 595 m 110 395 l S");
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.open_bytes("v1.pdf", None, v1.clone()).unwrap();
+        app.open_bytes("v2.pdf", None, v2.clone()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("doc.compare"));
+    h.run_steps(2);
+    h.get_by_label("Compare").click();
+    h.run_steps(3);
+    h.get_by_label("Overlay pages").click();
+    h.run_steps(3);
+    h.get_by_label("Line up by matching points").click();
+    h.run_steps(2);
+    assert!(h.state().overlay.as_ref().unwrap().snap, "snapping is on by default");
+    h.get_by_label("Pick points…").click();
+    h.run_steps(2);
+    // Clicks a couple of points off each line end land on it exactly.
+    h.state_mut().align_click(0, 0, [102.0, 190.0]);
+    h.state_mut().align_click(0, 0, [298.0, 193.5]);
+    h.state_mut().align_click(1, 0, [112.5, 199.0]);
+    assert_eq!(h.state().views[1].align_marks, [(0, [110.0, 197.0])], "snapped to the new corner");
+    h.state_mut().align_click(1, 0, [308.0, 196.0]);
+    h.run_steps(3);
+    let s = h.state().overlay.as_ref().unwrap();
+    assert_eq!(s.old_points, [(0, [100.0, 192.0]), (0, [300.0, 192.0])]);
+    assert_eq!(s.new_points, [(0, [110.0, 197.0]), (0, [310.0, 197.0])]);
+    h.get_by_label("Shift -10.0, 5.0 pt");
+
+    // Far from any line nothing snaps; with snapping off, nothing snaps even next to one.
+    h.get_by_label("Pick points…").click();
+    h.run_steps(2);
+    h.state_mut().align_click(0, 0, [500.0, 700.0]);
+    h.state_mut().overlay.as_mut().unwrap().snap = false;
+    h.state_mut().align_click(0, 0, [102.0, 190.0]);
+    assert_eq!(h.state().overlay.as_ref().unwrap().old_points, [(0, [500.0, 700.0]), (0, [102.0, 190.0])]);
+}
+
 /// Writes a screenshot of the Compare panel when PDFCRAFT_SHOT is set (for review).
 #[test]
 fn compare_panel_screenshot() {

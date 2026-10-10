@@ -385,6 +385,8 @@ pub struct DocView {
     /// draw numbered on the pages.
     pub align_click: Option<(usize, [f32; 2])>,
     pub align_marks: Vec<(usize, [f32; 2])>,
+    /// The drawing picked points snap to (see `overlay_ui::snap`).
+    pub align_snap: crate::overlay_ui::SnapCache,
     /// Fill & Sign text being typed.
     pub fill_text: Option<crate::fill_sign::TypeBox>,
     /// A queued Fill & Sign signature: select it after its edit succeeds, then leave placement.
@@ -574,6 +576,7 @@ impl DocView {
             marquee_done: None,
             align_click: None,
             align_marks: Vec::new(),
+            align_snap: None,
             fill_text: None,
             fill_signature_page: None,
             signature_drag: Default::default(),
@@ -1921,6 +1924,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let tag = scale_tag(scale);
     let hand = app.quick_tool == QuickTool::Hand;
     let tool = app.quick_tool;
+    let align_snapping = app.overlay.as_ref().is_some_and(|s| s.snap);
     // Text selection runs for the Select tool and for the markup tools (highlight…).
     let selects_text = match tool {
         QuickTool::Comment(t) => t.markup().is_some() || t == comments::CommentTool::ReplaceText,
@@ -2166,7 +2170,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             // Comments: tools, selection, moving and resizing come before text selection.
             let pcx = comments::PageCx { page: i, xf: &xf, info, tool, prefs, allowed, hidden: comments_hidden };
             if tool == QuickTool::AlignPoint {
-                crate::overlay_ui::page_input(ui, &resp, &xf, i, view);
+                crate::overlay_ui::page_input(ui, &resp, doc, &xf, i, view, align_snapping);
             }
             crate::overlay_ui::paint_marks(painter, &xf, i, view);
             if let QuickTool::Measure(measure_tool) = tool {

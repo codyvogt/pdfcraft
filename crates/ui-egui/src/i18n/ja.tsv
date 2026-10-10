@@ -2189,3 +2189,4 @@ key	Space	スペース
 	Pick all the points on page {p}	すべての点を {p} ページで選択してください
 	Stopped picking alignment points	位置合わせの点の選択を中止しました
 	Pick the alignment points on both files first	先に両方のファイルで位置合わせの点を選択してください
+	Snap to line ends and crossings	線の端点と交点にスナップ

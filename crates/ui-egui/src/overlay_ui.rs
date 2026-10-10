@@ -3,8 +3,9 @@
 //! `pdfcraft_organize::overlay`).
 
 use egui::{Align, Color32, Layout};
-use pdfcraft_engine::DocId;
 use pdfcraft_engine::compare::OverlayOptions;
+use pdfcraft_engine::measure::snap::{Geometry, SnapKind, SnapOptions};
+use pdfcraft_engine::{DocId, Document};
 
 use crate::theme::{self, Tokens};
 use crate::{Dialog, PdfCraftApp, QuickTool, widgets};
@@ -31,6 +32,8 @@ pub struct OverlaySetup {
     pub new_points: Vec<(usize, [f32; 2])>,
     /// The version whose points the Align Point tool is picking.
     pub picking: Option<Side>,
+    /// Snap picked points to line ends and crossings in the drawing.
+    pub snap: bool,
 }
 
 /// Picked points are drawn in these colours on the page.
@@ -48,6 +51,7 @@ impl OverlaySetup {
             old_points: Vec::new(),
             new_points: Vec::new(),
             picking: None,
+            snap: true,
         }
     }
 
@@ -145,6 +149,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
                 _ => tl!("Three points also fit a sheet stretched more one way than the other."),
             };
             ui.label(egui::RichText::new(hint).small().color(t.text_muted));
+            ui.checkbox(&mut setup.snap, tl!("Snap to line ends and crossings"));
             let picked = |n: usize| crate::i18n::fmt(tl!("{n} of {count} points"), &[("n", &n.to_string()), ("count", &setup.count.to_string())]);
             egui::Grid::new("overlay-points").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
                 ui.label(tl!("Old file:"));
@@ -260,8 +265,18 @@ impl PdfCraftApp {
     }
 
     /// The Align Point tool was clicked at `at` (view space) on `page` of view `index`.
+    /// With snapping on, a click near a line end or crossing takes that exact point.
     pub fn align_click(&mut self, index: usize, page: usize, at: [f32; 2]) {
         let Some(id) = self.views.get(index).map(|v| v.id) else { return };
+        let snapping = self.overlay.as_ref().is_some_and(|s| s.snap && s.picking.is_some());
+        let at = match (snapping, self.session.get(id), self.views.get_mut(index)) {
+            (true, Some(doc), Some(v)) => {
+                // The pointer's reach on screen, in points at the view's zoom.
+                let tolerance = SNAP_PIXELS / (v.zoom * crate::canvas::PT).max(1e-3);
+                snap(doc, page, at, tolerance, &mut v.align_snap).map_or(at, |(p, _)| p)
+            }
+            _ => at,
+        };
         let Some(setup) = self.overlay.as_mut() else { return };
         let Some(side) = setup.picking else { return };
         let (want, points) = match side {
@@ -314,15 +329,66 @@ impl PdfCraftApp {
     }
 }
 
-/// The Align Point tool on page `page`: a click records the point; picked points are drawn
-/// numbered.
-pub(crate) fn page_input(ui: &egui::Ui, resp: &egui::Response, xf: &crate::canvas::PageXform, page: usize, view: &mut crate::canvas::DocView) {
-    if let Some(p) = ui.input(|i| i.pointer.hover_pos()).filter(|p| xf.rect.contains(*p)) {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
-        if resp.clicked() {
-            let (x, y) = xf.screen_to_view(p);
-            view.align_click = Some((page, [x, y]));
+/// Picked points snap to line ends and crossings: features that match unambiguously between
+/// two plots of a sheet (unlike midpoints, or anywhere along a line).
+const SNAPS: SnapOptions = SnapOptions { endpoints: true, midpoints: false, intersections: true, paths: false };
+
+/// How near the pointer (screen pixels) a line end or crossing must be to snap.
+const SNAP_PIXELS: f32 = 8.0;
+
+/// A page's drawing, kept while points are picked on it: (page, edit generation, paths).
+pub type SnapCache = Option<(usize, u64, Result<Geometry, String>)>;
+
+/// The line end or crossing of `doc`'s drawing within `tolerance` points of `at` (view space)
+/// on `page`, as a view-space point. `None` when there is none, or the page's drawing can't be
+/// read.
+pub(crate) fn snap(doc: &Document, page: usize, at: [f32; 2], tolerance: f32, cache: &mut SnapCache) -> Option<([f32; 2], SnapKind)> {
+    let info = doc.info.pages.get(page)?;
+    if !tolerance.is_finite() || !at.iter().all(|v| v.is_finite()) {
+        return None;
+    }
+    if cache.as_ref().is_none_or(|(p, g, _)| *p != page || *g != doc.edit_generation()) {
+        *cache = Some((page, doc.edit_generation(), doc.measurement_paths(page)));
+    }
+    let Some((_, _, Ok(geometry))) = cache.as_ref() else { return None };
+    let u = info.view_to_user(at[0], at[1]);
+    let hit = geometry.snap([f64::from(u[0]), f64::from(u[1])], f64::from(tolerance), SNAPS).ok()??;
+    let v = info.user_to_view(hit.point[0] as f32, hit.point[1] as f32);
+    v.iter().all(|c| c.is_finite()).then_some((v, hit.kind))
+}
+
+/// The Align Point tool on page `page`: shows what a click would snap to; a click records the
+/// pointer's position (snapped when it is recorded).
+pub(crate) fn page_input(
+    ui: &egui::Ui,
+    resp: &egui::Response,
+    doc: &Document,
+    xf: &crate::canvas::PageXform,
+    page: usize,
+    view: &mut crate::canvas::DocView,
+    snapping: bool,
+) {
+    let Some(p) = ui.input(|i| i.pointer.hover_pos()).filter(|p| xf.rect.contains(*p)) else { return };
+    ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+    let (x, y) = xf.screen_to_view(p);
+    if snapping {
+        // Screen pixels per point, whichever way the page is turned.
+        let scale = (xf.rect.width() * xf.rect.height() / (xf.pw * xf.ph).max(1e-3)).sqrt().max(1e-3);
+        if let Some((at, kind)) = snap(doc, page, [x, y], SNAP_PIXELS / scale, &mut view.align_snap) {
+            let c = xf.view_rect([at[0], at[1], at[0], at[1]]).center();
+            let green = Color32::from_rgb(46, 158, 92);
+            ui.painter().circle_stroke(c, 6.0, egui::Stroke::new(1.5, green));
+            let label = match kind {
+                SnapKind::Endpoint => tl!("Endpoint"),
+                SnapKind::Intersection => tl!("Intersection"),
+                SnapKind::Midpoint => tl!("Midpoint"),
+                SnapKind::Path => tl!("Path"),
+            };
+            ui.painter().text(c + egui::vec2(10.0, -10.0), egui::Align2::LEFT_BOTTOM, label, theme::regular(11.0), green);
         }
+    }
+    if resp.clicked() {
+        view.align_click = Some((page, [x, y]));
     }
 }
 

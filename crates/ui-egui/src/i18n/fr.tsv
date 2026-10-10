@@ -2189,3 +2189,4 @@ key	Space	Espace
 	Pick all the points on page {p}	Choisissez tous les points sur la page {p}
 	Stopped picking alignment points	Choix des points d’alignement arrêté
 	Pick the alignment points on both files first	Choisissez d’abord les points d’alignement dans les deux fichiers
+	Snap to line ends and crossings	Accrocher aux extrémités et croisements des traits

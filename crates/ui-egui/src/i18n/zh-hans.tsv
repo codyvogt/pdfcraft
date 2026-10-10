@@ -2153,3 +2153,4 @@ key	Space	空格
 	Pick all the points on page {p}	请在第 {p} 页上选取所有点
 	Stopped picking alignment points	已停止选取对齐点
 	Pick the alignment points on both files first	请先在两个文件上选取对齐点
+	Snap to line ends and crossings	吸附到线条端点和交点

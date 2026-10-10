@@ -2075,3 +2075,4 @@ key	Space	空格
 	Pick all the points on page {p}	請在第 {p} 頁上選取所有點
 	Stopped picking alignment points	已停止選取對齊點
 	Pick the alignment points on both files first	請先在兩個檔案上選取對齊點
+	Snap to line ends and crossings	貼齊線條端點和交點

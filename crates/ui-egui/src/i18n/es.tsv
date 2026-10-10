@@ -2105,3 +2105,4 @@ key	Space	Espacio
 	Pick all the points on page {p}	Elija todos los puntos en la página {p}
 	Stopped picking alignment points	Se dejó de elegir puntos de alineación
 	Pick the alignment points on both files first	Elija primero los puntos de alineación en ambos archivos
+	Snap to line ends and crossings	Ajustar a extremos y cruces de líneas
