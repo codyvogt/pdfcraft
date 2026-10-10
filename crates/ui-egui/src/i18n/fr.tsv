@@ -922,6 +922,8 @@
 	Visual	Visuel
 	Mark as comments	Marquer comme commentaires
 	Report…	Rapport…
+	Overlay pages	Superposer les pages
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Un nouveau PDF avec les anciennes pages en rouge sous les nouvelles en bleu : les traits communs apparaissent foncés.
 	{kind} · page {p}	{kind} · page {p}
 	Set Alternate Text	Définir le texte de remplacement
 	This document has no tagged figures.	Ce document ne contient aucune figure balisée.
@@ -2167,3 +2169,23 @@ key	Space	Espace
 	Collapse all	Tout réduire
 	Remove page	Retirer la page
 	Remove {n} pages	Retirer {n} pages
+	Overlay Pages	Superposer les pages
+	Lines both versions share come out dark; lines only one has keep its colour.	Les traits communs aux deux versions apparaissent foncés ; ceux d’une seule version gardent sa couleur.
+	Line up by matching points	Aligner par points correspondants
+	Points on each file:	Points sur chaque fichier :
+	One point shifts the new pages.	Un point décale les nouvelles pages.
+	Two points shift, turn and scale the new pages evenly.	Deux points décalent, font pivoter et mettent à l’échelle les nouvelles pages.
+	Three points also fit a sheet stretched more one way than the other.	Trois points corrigent aussi une feuille étirée plus dans un sens que dans l’autre.
+	{n} of {count} points	{n} point(s) sur {count}
+	Pick points…	Choisir les points…
+	Clear points	Effacer les points
+	Create overlay	Créer la superposition
+	Shift {x}, {y} pt	Décalage {x}, {y} pt
+	 · turn {a}°	 · rotation {a}°
+	 · scale {s}%	 · échelle {s} %
+	 · scale {x}% across, {y}% down	 · échelle {x} % en largeur, {y} % en hauteur
+	Click point {i} of {n} on the old file (Esc cancels)	Cliquez sur le point {i} sur {n} dans l’ancien fichier (Échap pour annuler)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Cliquez sur le point {i} sur {n} dans le nouveau fichier, aux mêmes endroits et dans le même ordre (Échap pour annuler)
+	Pick all the points on page {p}	Choisissez tous les points sur la page {p}
+	Stopped picking alignment points	Choix des points d’alignement arrêté
+	Pick the alignment points on both files first	Choisissez d’abord les points d’alignement dans les deux fichiers

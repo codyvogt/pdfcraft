@@ -18,6 +18,7 @@ mod dedupe;
 mod import;
 mod labels;
 mod outline;
+mod overlay;
 mod pdfx;
 mod prune;
 pub mod view;
@@ -30,6 +31,7 @@ pub use outline::{
     Bookmark, OutlineEntry, OutlineError, add_bookmark, add_bookmark_tree, bookmarks, delete_bookmark, move_bookmark, rename_bookmark,
     set_bookmark_open, set_bookmark_page,
 };
+pub use overlay::{OverlayOptions, alignment, overlay};
 pub use view::{InitialView, displays_doc_title, initial_view, set_initial_view};
 
 #[derive(Debug, thiserror::Error, PartialEq)]

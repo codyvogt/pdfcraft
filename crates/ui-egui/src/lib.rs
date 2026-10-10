@@ -47,6 +47,7 @@ mod marks_ui;
 mod measure_ui;
 mod ocr_ui;
 mod optimize_ui;
+mod overlay_ui;
 mod search_ui;
 mod sign_ui;
 mod stamps_ui;
@@ -210,6 +211,8 @@ pub enum QuickTool {
     /// Edit ▸ Column Select: drag a rectangle to select only the text inside it (#740). The
     /// Select tool does the same while Alt/Option is held at the start of a drag.
     ColumnSelect,
+    /// Overlay Pages ▸ Pick points: click matching points on the old, then the new version.
+    AlignPoint,
 }
 
 /// Files dropped on a document's page grid.
@@ -286,6 +289,8 @@ pub enum Dialog {
     Preferences,
     /// Compare files: choose the older version.
     CompareFiles,
+    /// Compare ▸ Overlay pages: colours and alignment.
+    OverlayPages,
     /// Action Wizard.
     ActionWizard,
     /// Standards ▸ PDF/A.
@@ -501,6 +506,8 @@ pub struct PdfCraftApp {
     /// Compare files: the chosen older document and the last result.
     pub compare_old: Option<DocId>,
     pub compare: Option<compare_ui::CompareState>,
+    /// Overlay Pages: colours and alignment points.
+    pub overlay: Option<overlay_ui::OverlaySetup>,
     /// The JavaScript console and the Document JavaScripts draft.
     pub js_console: js_ui::JsConsole,
     pub doc_js: js_ui::DocJsDraft,
@@ -762,6 +769,7 @@ impl PdfCraftApp {
             pdfa: Default::default(),
             compare_old: None,
             compare: None,
+            overlay: None,
             js_console: Default::default(),
             doc_js: Default::default(),
             a11y: a11y_ui::A11yState::default(),
@@ -1593,6 +1601,7 @@ impl PdfCraftApp {
                     "document-js" => Some(Dialog::DocumentJs),
                     "preferences" => Some(Dialog::Preferences),
                     "compare-files" => Some(Dialog::CompareFiles),
+                    "overlay-pages" => Some(Dialog::OverlayPages),
                     "action-wizard" => Some(Dialog::ActionWizard),
                     "pdfa" => Some(Dialog::PdfA),
                     "signature" => Some(Dialog::Signature),
@@ -1698,6 +1707,7 @@ impl PdfCraftApp {
                     "marquee-zoom" => QuickTool::MarqueeZoom,
                     "snapshot" => QuickTool::Snapshot,
                     "column-select" => QuickTool::ColumnSelect,
+                    "align-point" => QuickTool::AlignPoint,
                     "certify" => QuickTool::SignArea { certify: true },
                     custom if custom.starts_with("custom-stamp-") => {
                         let i: usize = custom[13..].parse().map_err(|_| format!("bad stamp {custom}"))?;

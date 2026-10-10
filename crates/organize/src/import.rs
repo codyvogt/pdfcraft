@@ -412,6 +412,14 @@ fn register_layers(dst: &mut Document, src: &Document, ocgs: &[(ObjRef, ObjRef)]
         .and_then(|d| d.as_dict().and_then(|d| d.get(b"OFF")).map(|o| src.resolve(o)))
         .and_then(|o| o.as_array().cloned())
         .unwrap_or_default();
+    let layers: Vec<(ObjRef, bool)> = ocgs.iter().map(|(from, to)| (*to, !src_off.contains(&Object::Ref(*from)))).collect();
+    append_layers(dst, &layers)
+}
+
+/// Add layers (optional content groups, each on or off by default) to the end of the
+/// destination's layer list, creating `/OCProperties` if needed. Layers already listed keep
+/// their state.
+pub(crate) fn append_layers(dst: &mut Document, layers: &[(ObjRef, bool)]) -> Result<(), OrganizeError> {
     let root = dst.root().ok_or(OrganizeError::NoPageTree)?;
     let catalog = dst.get(root).as_dict().cloned().ok_or(OrganizeError::NoPageTree)?;
     let (props_ref, mut props) = match catalog.get(b"OCProperties") {
@@ -423,14 +431,14 @@ fn register_layers(dst: &mut Document, src: &Document, ocgs: &[(ObjRef, ObjRef)]
     let mut all = list(&props, b"OCGs", dst);
     let mut config = props.get(b"D").map(|d| dst.resolve(d)).and_then(|d| d.as_dict().cloned()).unwrap_or_default();
     let (mut on, mut off, mut order) = (list(&config, b"ON", dst), list(&config, b"OFF", dst), list(&config, b"Order", dst));
-    for (from, to) in ocgs {
-        let r = Object::Ref(*to);
+    for (layer, visible) in layers {
+        let r = Object::Ref(*layer);
         if all.contains(&r) {
             continue;
         }
         all.push(r.clone());
         order.push(r.clone());
-        if src_off.contains(&Object::Ref(*from)) { off.push(r) } else { on.push(r) }
+        if *visible { on.push(r) } else { off.push(r) }
     }
     props.set(b"OCGs".to_vec(), Object::Array(all));
     config.set(b"ON".to_vec(), Object::Array(on));

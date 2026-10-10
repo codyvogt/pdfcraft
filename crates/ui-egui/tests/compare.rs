@@ -4,7 +4,7 @@
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_engine::Session;
-use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
+use pdfcraft_ui_egui::{PdfCraftApp, QuickTool, RightPanel};
 
 #[test]
 fn compare_two_versions() {
@@ -36,9 +36,70 @@ fn compare_two_versions() {
     h.get_by_label("Mark as comments").click();
     h.run_steps(3);
     assert_eq!(h.state().session.get(id).unwrap().info.annotations.len(), 2);
+    h.get_by_label("Overlay pages").click();
+    h.run_steps(3);
+    h.get_by_label("Overlay Pages");
+    h.get_by_label("Create overlay").click();
+    h.run_steps(3);
+    let overlay = h.state().session.get(h.state().active_ids().unwrap().1).unwrap();
+    assert_eq!(overlay.name, "Overlay.pdf");
+    let layers: Vec<&str> = overlay.info.layers.iter().map(|l| l.name.as_str()).collect();
+    assert_eq!(layers, ["Old", "New"]);
+    // Back to the compared document, whose panel offers the report.
+    let back = h.state().views.iter().position(|v| v.id == id).unwrap();
+    h.state_mut().active = Some(back);
+    h.run_steps(2);
     h.get_by_label("Report…").click();
     h.run_steps(3);
     assert_eq!(h.state().session.get(h.state().active_ids().unwrap().1).unwrap().name, "Compare Report.pdf");
+}
+
+#[test]
+fn overlay_aligned_by_picked_points() {
+    let s = Session::new();
+    let v1 = s.create_from_text("t", "Level 1 floor plan").unwrap().to_vec();
+    let v2 = s.create_from_text("t", "Level 1 floor plan, revised").unwrap().to_vec();
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.open_bytes("v1.pdf", None, v1.clone()).unwrap();
+        app.open_bytes("v2.pdf", None, v2.clone()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("doc.compare"));
+    h.run_steps(2);
+    h.get_by_label("Compare").click();
+    h.run_steps(3);
+    h.get_by_label("Overlay pages").click();
+    h.run_steps(3);
+    h.get_by_label("Line up by matching points").click();
+    h.run_steps(2);
+    h.get_by_label("Pick points…").click();
+    h.run_steps(3);
+    let (old_view, new_view) = (0, 1);
+    assert_eq!(h.state().quick_tool, QuickTool::AlignPoint);
+    assert_eq!(h.state().active, Some(old_view), "picking starts on the old file");
+    assert!(h.state().dialog.is_none());
+    // Two features on the old sheet, then the same two on the new one, 10 pt right and 5 pt
+    // lower (view space, y down).
+    h.state_mut().align_click(old_view, 0, [100.0, 100.0]);
+    h.state_mut().align_click(old_view, 0, [300.0, 100.0]);
+    h.run_steps(2);
+    assert_eq!(h.state().active, Some(new_view), "then the new file");
+    assert_eq!(h.state().views[old_view].align_marks.len(), 0);
+    // A click on another page is refused: the points of a version share one page.
+    h.state_mut().align_click(new_view, 0, [110.0, 105.0]);
+    h.state_mut().align_click(new_view, 1, [310.0, 105.0]);
+    assert_eq!(h.state().views[new_view].align_marks.len(), 1, "the first point is drawn, the other page's refused");
+    h.state_mut().align_click(new_view, 0, [310.0, 105.0]);
+    h.run_steps(3);
+    assert_eq!(h.state().quick_tool, QuickTool::Select);
+    h.get_by_label("Overlay Pages");
+    h.get_by_label("Shift -10.0, 5.0 pt");
+    h.get_by_label("Create overlay").click();
+    h.run_steps(3);
+    let overlay = h.state().session.get(h.state().active_ids().unwrap().1).unwrap();
+    assert_eq!(overlay.name, "Overlay.pdf");
 }
 
 /// Writes a screenshot of the Compare panel when PDFCRAFT_SHOT is set (for review).
@@ -63,6 +124,51 @@ fn compare_panel_screenshot() {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
     h.render().unwrap().save(out).unwrap();
+}
+
+/// Writes screenshots of Overlay Pages when PDFCRAFT_SHOT is set (for review): picking points
+/// (`…-pick.png`), the dialog with the fitted alignment (`…-dialog.png`) and the overlay
+/// (`…-result.png`).
+#[test]
+fn overlay_screenshots() {
+    let Ok(out) = std::env::var("PDFCRAFT_SHOT") else { return };
+    let name = |part: &str| out.trim_end_matches(".png").to_string() + "-" + part + ".png";
+    let s = Session::new();
+    let v1 = s.create_from_text("t", "Delivery within five days. Returns accepted.").unwrap().to_vec();
+    let v2 = s.create_from_text("t", "Delivery within three days. Returns accepted for a week.").unwrap().to_vec();
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.open_bytes("v1.pdf", None, v1.clone()).unwrap();
+        app.open_bytes("v2.pdf", None, v2.clone()).unwrap();
+        app
+    });
+    let settle = |h: &mut Harness<PdfCraftApp>| {
+        for _ in 0..20 {
+            h.run_steps(2);
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    };
+    h.run_steps(4);
+    h.state_mut().compare_old = h.state().views.first().map(|v| v.id);
+    h.state_mut().run_compare();
+    h.run_steps(3);
+    h.get_by_label("Overlay pages").click();
+    h.run_steps(3);
+    h.get_by_label("Line up by matching points").click();
+    h.run_steps(2);
+    h.get_by_label("Pick points…").click();
+    h.run_steps(2);
+    h.state_mut().align_click(0, 0, [72.0, 72.0]);
+    settle(&mut h);
+    h.render().unwrap().save(name("pick")).unwrap();
+    h.state_mut().align_click(0, 0, [400.0, 72.0]);
+    h.state_mut().align_click(1, 0, [74.0, 70.0]);
+    h.state_mut().align_click(1, 0, [402.0, 71.0]);
+    settle(&mut h);
+    h.render().unwrap().save(name("dialog")).unwrap();
+    h.get_by_label("Create overlay").click();
+    settle(&mut h);
+    h.render().unwrap().save(name("result")).unwrap();
 }
 
 #[test]

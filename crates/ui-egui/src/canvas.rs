@@ -381,6 +381,10 @@ pub struct DocView {
     /// Marquee Zoom / Snapshot: the rectangle being dragged (page, start), and a finished one.
     pub marquee: Option<(usize, Pos2)>,
     pub marquee_done: Option<crate::zoom_snap::Marquee>,
+    /// Overlay Pages ▸ Pick points: a click to record (page, view point), and the points to
+    /// draw numbered on the pages.
+    pub align_click: Option<(usize, [f32; 2])>,
+    pub align_marks: Vec<(usize, [f32; 2])>,
     /// Fill & Sign text being typed.
     pub fill_text: Option<crate::fill_sign::TypeBox>,
     /// A queued Fill & Sign signature: select it after its edit succeeds, then leave placement.
@@ -568,6 +572,8 @@ impl DocView {
             panel_drag: None,
             marquee: None,
             marquee_done: None,
+            align_click: None,
+            align_marks: Vec::new(),
             fill_text: None,
             fill_signature_page: None,
             signature_drag: Default::default(),
@@ -1932,6 +1938,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         | QuickTool::Link
         | QuickTool::SignArea { .. }
         | QuickTool::MarqueeZoom
+        | QuickTool::AlignPoint
         | QuickTool::Snapshot => false,
     };
     let prefs = &app.comment_prefs;
@@ -2158,6 +2165,10 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
 
             // Comments: tools, selection, moving and resizing come before text selection.
             let pcx = comments::PageCx { page: i, xf: &xf, info, tool, prefs, allowed, hidden: comments_hidden };
+            if tool == QuickTool::AlignPoint {
+                crate::overlay_ui::page_input(ui, &resp, &xf, i, view);
+            }
+            crate::overlay_ui::paint_marks(painter, &xf, i, view);
             if let QuickTool::Measure(measure_tool) = tool {
                 crate::measure_ui::page_input(ui, &resp, doc, view, &pcx, measure_tool);
             }
@@ -2730,6 +2741,12 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         }
     }
     app.quick_tool = tool;
+    if let Some((page, at)) = app.views[index].align_click.take() {
+        app.align_click(index, page, at);
+    }
+    if app.quick_tool == QuickTool::AlignPoint && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        app.cancel_align_picking();
+    }
     if let Some((page, at)) = app.views[index].comments.attach_at.take() {
         app.attach_file_comment(page, at);
     }

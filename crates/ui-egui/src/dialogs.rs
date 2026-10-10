@@ -56,6 +56,7 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let mut a11y_now = false;
     let mut ocr_now = false;
     let mut compare_now = false;
+    let mut overlay_action = None;
     let mut images_now = false;
     let mut stamp_now = false;
     let mut alt_now = false;
@@ -889,6 +890,11 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
                 close = go || cancel;
                 return;
             }
+            Dialog::OverlayPages => {
+                overlay_action = crate::overlay_ui::body(ui, app, &t);
+                close = overlay_action.is_some();
+                return;
+            }
             Dialog::JsConsole => {
                 ui.set_width(640.0);
                 close = crate::js_ui::console_body(ui, app, &t);
@@ -1336,6 +1342,9 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
     }
     if compare_now {
         app.run_compare();
+    }
+    if let Some(a) = overlay_action {
+        app.overlay_dialog_action(a);
     }
     if a11y_now {
         app.a11y_skipped.clear();

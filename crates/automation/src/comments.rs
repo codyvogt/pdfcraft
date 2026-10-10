@@ -109,7 +109,7 @@ impl Args<'_> {
         self.nums(key)?.ok_or_else(|| ToolError::InvalidArgs(format!("{why} needs `{key}`")))
     }
 
-    fn color(&self, key: &str) -> Result<Option<Rgb>> {
+    pub(crate) fn color(&self, key: &str) -> Result<Option<Rgb>> {
         self.opt_str(key)?.map(parse_color).transpose()
     }
 }

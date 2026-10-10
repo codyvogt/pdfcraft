@@ -416,6 +416,50 @@ impl Automation {
         Ok(json!({ "path": path.to_string_lossy(), "bytes": bytes.len() }))
     }
 
+    pub(crate) fn doc_compare_overlay(&self, a: &Args) -> Result<Value> {
+        let (old, new) = self.compare_ids(a)?;
+        let mut opts = pdfcraft_engine::compare::OverlayOptions::default();
+        if let Some(c) = a.color("old_color")? {
+            opts.old_colour = c;
+        }
+        if let Some(c) = a.color("new_color")? {
+            opts.new_colour = c;
+        }
+        if let Some([dx, dy]) = a.nums::<2>("offset")? {
+            opts.new_transform = [1.0, 0.0, 0.0, 1.0, dx, dy];
+        }
+        if let Some(m) = a.nums::<6>("matrix")? {
+            opts.new_transform = m;
+        }
+        if let Some(align) = a.get("align") {
+            let wrong = || ToolError::InvalidArgs("align must be { old: [[x, y], …], new: [[x, y], …], old_page?, new_page? }".into());
+            let points = |key: &str| -> Result<Vec<[f64; 2]>> {
+                let list = align.get(key).and_then(Value::as_array).ok_or_else(wrong)?;
+                list.iter()
+                    .take(4)
+                    .map(|p| {
+                        let xy = p.as_array().filter(|xy| xy.len() == 2).ok_or_else(wrong)?;
+                        let n = |i: usize| xy.get(i).and_then(Value::as_f64).filter(|v| v.is_finite()).ok_or_else(wrong);
+                        Ok([n(0)?, n(1)?])
+                    })
+                    .collect()
+            };
+            // 1-based pages, page 1 by default.
+            let page = |key: &str| -> Result<usize> {
+                match align.get(key) {
+                    None | Some(Value::Null) => Ok(0),
+                    Some(v) => v.as_u64().filter(|p| *p >= 1).and_then(|p| usize::try_from(p - 1).ok()).ok_or_else(wrong),
+                }
+            };
+            let (op, np) = (points("old")?, points("new")?);
+            opts.new_transform = self.session.overlay_alignment((old, page("old_page")?, &op), (new, page("new_page")?, &np)).map_err(failed)?;
+        }
+        let bytes = self.session.compare_overlay(old, new, &opts).map_err(failed)?;
+        let path = self.resolve(a.str("path")?, true)?;
+        write_atomic(&path, &bytes)?;
+        Ok(json!({ "path": path.to_string_lossy(), "bytes": bytes.len() }))
+    }
+
     pub(crate) fn doc_compare_mark(&mut self, a: &Args) -> Result<Value> {
         let (old, new) = self.compare_ids(a)?;
         let n = self.session.mark_differences(old, new).map_err(failed)?;

@@ -27,6 +27,7 @@ pub enum PanelAction {
     Select(usize),
     Mark,
     Report,
+    Overlay,
     Clear,
 }
 
@@ -105,6 +106,13 @@ pub(crate) fn panel(ui: &mut egui::Ui, t: &Tokens, state: &Option<CompareState>,
         }
         if ui.button(tl!("Report…")).clicked() {
             action = Some(PanelAction::Report);
+        }
+        if ui
+            .button(tl!("Overlay pages"))
+            .on_hover_text(tl!("A new PDF with the old pages in red under the new ones in blue: lines both share are dark."))
+            .clicked()
+        {
+            action = Some(PanelAction::Overlay);
         }
         if ui.button(tl!("Clear")).clicked() {
             action = Some(PanelAction::Clear);
@@ -215,6 +223,7 @@ impl PdfCraftApp {
                 }
                 Err(e) => self.notify_error(e),
             },
+            PanelAction::Overlay => self.open_overlay_dialog(old, new),
             PanelAction::Clear => {
                 self.compare = None;
                 self.views[index].compare_marks.clear();

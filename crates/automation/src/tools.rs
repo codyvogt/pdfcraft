@@ -876,6 +876,28 @@ pub fn tools() -> Vec<ToolDef> {
         t("doc_compare_report", "Compare report", "Write the compare summary report (a PDF listing every change) to path.")
             .cmd("doc.compare")
             .with(schema(json!({ "doc": doc(), "other": { "type": "integer" }, "path": { "type": "string" } }), &["doc", "other", "path"])),
+        t("doc_compare_overlay", "Overlay pages", "Overlay page n of doc (newer) on page n of other (older) and write the result to path as a new PDF: the old version in old_color (default red), the new one in new_color (default blue), multiplied, so lines both share are dark and lines only one has keep its colour. Both stay vector; each is a layer (Old, New) that can be hidden. Annotations are not drawn.")
+            .cmd("doc.compare")
+            .with(schema(
+                json!({
+                    "doc": doc(), "other": { "type": "integer", "description": "The older document (from doc_open)." }, "path": { "type": "string" },
+                    "old_color": color(), "new_color": color(),
+                    "offset": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Shift the new pages by [dx, dy] points (right, up) to line them up." },
+                    "matrix": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6, "description": "Place the new pages with this PDF matrix [a b c d e f] instead (overrides offset)." },
+                    "align": {
+                        "type": "object",
+                        "description": "Line the versions up from matching points (overrides offset and matrix): the same 1–3 features picked on each, as [x, y] points on the displayed page from its top-left corner. One pair shifts, two also turn and scale evenly, three fit any stretch.",
+                        "properties": {
+                            "old": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "minItems": 1, "maxItems": 3 },
+                            "new": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "minItems": 1, "maxItems": 3 },
+                            "old_page": { "type": "integer", "minimum": 1, "description": "Page the old points are on (default 1)." },
+                            "new_page": { "type": "integer", "minimum": 1, "description": "Page the new points are on (default 1)." },
+                        },
+                        "required": ["old", "new"],
+                    },
+                }),
+                &["doc", "other", "path"],
+            )),
         t("doc_compare_mark", "Mark differences as comments", "Add the differences from other (older) to doc (newer) as comments in doc: highlights over replaced (blue) and inserted (green) text, notes where text was deleted (red), authored Compare. Undoable.")
             .cmd("doc.compare")
             .with(schema(json!({ "doc": doc(), "other": { "type": "integer" } }), &["doc", "other"])),

@@ -3071,6 +3071,20 @@ fn comparing_documents_through_tools() {
     assert_eq!(r["changes"][0]["new"]["page"], 1);
     ok(&mut a, "doc_compare_report", json!({ "doc": v2, "other": v1, "path": "report.pdf" }));
     assert!(std::fs::read(dir.join("report.pdf")).unwrap().starts_with(b"%PDF"));
+    let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": v2, "other": v1, "path": "overlay.pdf", "old_color": "green", "offset": [5, -5] }));
+    assert!(r["bytes"].as_u64().unwrap() > 0, "{r}");
+    let overlay = ok(&mut a, "doc_open", json!({ "path": "overlay.pdf" }))["doc"].as_u64().unwrap();
+    let info = ok(&mut a, "doc_info", json!({ "doc": overlay }));
+    assert_eq!(info["layers"], json!([{ "name": "Old", "visible": true }, { "name": "New", "visible": true }]), "{info}");
+    assert!(a.call("doc_compare_overlay", &json!({ "doc": v2, "other": v1, "path": "bad.pdf", "matrix": [0, 0, 0, 0, 0, 0] })).is_err());
+    let align = json!({ "old": [[72, 72], [300, 72]], "new": [[80, 70], [308, 70]] });
+    let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": v2, "other": v1, "path": "aligned.pdf", "align": align }));
+    assert!(r["bytes"].as_u64().unwrap() > 0, "{r}");
+    for bad in
+        [json!({ "old": [[0, 0]], "new": [[0, 0], [5, 5]] }), json!({ "old": [[0, 0]] }), json!({ "old": [[0, 0]], "new": [[0, 0]], "new_page": 9 })]
+    {
+        assert!(a.call("doc_compare_overlay", &json!({ "doc": v2, "other": v1, "path": "bad.pdf", "align": bad })).is_err(), "{bad}");
+    }
     assert_eq!(ok(&mut a, "doc_compare_mark", json!({ "doc": v2, "other": v1 }))["comments"], 3);
     assert!(a.call("doc_compare", &json!({ "doc": v2, "other": 999 })).is_err());
 }

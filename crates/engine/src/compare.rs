@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 pub use pdfcraft_compare::{Change, Comparison, Kind, Side};
+pub use pdfcraft_organize::OverlayOptions;
 
 use crate::{DocId, Edit, EditError, Markup, NewAnnotation, NoteIcon, Session, Shape};
 
@@ -79,6 +80,34 @@ impl Session {
             }
         }
         Ok(out)
+    }
+
+    /// Overlay Pages: a new PDF (not opened) laying page n of `new` over page n of `old`, old in
+    /// one colour and new in another, so lines only one version has stand out. Each version is a
+    /// layer. See [`pdfcraft_organize::overlay`].
+    pub fn compare_overlay(&self, old: DocId, new: DocId, opts: &OverlayOptions) -> Result<Arc<Vec<u8>>, EditError> {
+        let out = pdfcraft_organize::overlay(self.cos(old)?, self.cos(new)?, opts)?;
+        self.write_new(&out)
+    }
+
+    /// Alignment for Overlay Pages from matching points picked on the pages as displayed (view
+    /// space: points from the page's top-left corner, as the canvas and the tools use): one to
+    /// three points on page `old_page` of `old` and the same number on page `new_page` of `new`.
+    /// Returns the placement for [`OverlayOptions::new_transform`]; see
+    /// [`pdfcraft_organize::alignment`].
+    pub fn overlay_alignment(
+        &self,
+        (old, old_page, old_points): (DocId, usize, &[[f64; 2]]),
+        (new, new_page, new_points): (DocId, usize, &[[f64; 2]]),
+    ) -> Result<[f64; 6], EditError> {
+        // The overlay places pages upright from their lower-left corner: flip y.
+        let flip = |id: DocId, page: usize, pts: &[[f64; 2]]| -> Result<Vec<[f64; 2]>, EditError> {
+            let doc = self.get(id).ok_or(EditError::NoDocument)?;
+            let info = doc.info.pages.get(page).ok_or(pdfcraft_organize::OrganizeError::NoSuchPage(page))?;
+            Ok(pts.iter().map(|p| [p[0], info.height as f64 - p[1]]).collect())
+        };
+        let (o, n) = (flip(old, old_page, old_points)?, flip(new, new_page, new_points)?);
+        Ok(pdfcraft_organize::alignment(&o, &n)?)
     }
 
     /// The compare report as a new PDF (not opened).

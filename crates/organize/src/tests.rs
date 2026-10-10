@@ -1375,6 +1375,91 @@ fn a_page_becomes_a_form_xobject_upright() {
 }
 
 #[test]
+fn overlay_pairs_pages_on_two_layers() {
+    let old = open(fixture());
+    let new = extract_pages(&old, &[0]).unwrap();
+    // The new page lands 10 pt right and 20 pt up of the old one.
+    let opts = OverlayOptions { new_transform: [1.0, 0.0, 0.0, 1.0, 10.0, 20.0], ..Default::default() };
+    let out = overlay(&old, &new, &opts).unwrap();
+    let out = open(write_full(&out, &SaveOptions::default()).unwrap());
+    let all = pages(&out).unwrap();
+    assert_eq!(all.len(), 3, "as many pages as the longer document");
+    let page = |i: usize| out.get(all[i].obj).as_dict().cloned().unwrap();
+    let nums = |o: &Object| -> Vec<f64> { out.resolve(o).as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect() };
+    // Page 1 is displayed 400 × 300 (a quarter turn); the sheet covers both placements.
+    assert_eq!(nums(page(0).get(b"MediaBox").unwrap()), [0.0, 0.0, 410.0, 320.0]);
+    let drawn = |i: usize| -> Vec<String> {
+        let res = page(i).get(b"Resources").map(|r| out.resolve(r).as_dict().cloned().unwrap()).unwrap();
+        let xo = res.get(b"XObject").map(|x| out.resolve(x).as_dict().cloned().unwrap()).unwrap();
+        xo.iter().map(|(k, _)| String::from_utf8_lossy(k).into_owned()).collect()
+    };
+    assert_eq!(drawn(0), ["Old", "New"]);
+    assert_eq!(drawn(1), ["Old"], "pages only the old version has appear alone");
+    assert_eq!(nums(page(2).get(b"MediaBox").unwrap()), [0.0, 0.0, 500.0, 500.0]);
+    // Both versions are layers, on by default.
+    let root = out.root().unwrap();
+    let catalog = out.get(root).as_dict().cloned().unwrap();
+    let props = catalog.get(b"OCProperties").map(|p| out.resolve(p).as_dict().cloned().unwrap()).unwrap();
+    let names: Vec<String> = props
+        .get(b"OCGs")
+        .map(|o| out.resolve(o).as_array().cloned().unwrap())
+        .unwrap()
+        .iter()
+        .map(|g| {
+            let d = out.resolve(g).as_dict().cloned().unwrap();
+            String::from_utf8_lossy(&d.get(b"Name").unwrap().as_string().unwrap().bytes).into_owned()
+        })
+        .collect();
+    assert_eq!(names, ["Old", "New"]);
+    let config = props.get(b"D").map(|d| out.resolve(d).as_dict().cloned().unwrap()).unwrap();
+    assert_eq!(out.resolve(config.get(b"ON").unwrap()).as_array().unwrap().len(), 2);
+
+    // Placements that collapse the page, or throw it out of reach, are refused.
+    for t in [[0.0; 6], [1.0, 0.0, 0.0, 1.0, f64::NAN, 0.0], [1.0, 0.0, 0.0, 1.0, 1e300, 0.0]] {
+        let bad = OverlayOptions { new_transform: t, ..Default::default() };
+        assert!(overlay(&old, &new, &bad).is_err(), "{t:?}");
+    }
+}
+
+#[test]
+fn alignment_carries_new_points_onto_old_ones() {
+    let apply = |m: [f64; 6], p: [f64; 2]| [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+    let close = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).abs() < 1e-6 && (a[1] - b[1]).abs() < 1e-6;
+    // One pair: a shift.
+    assert_eq!(alignment(&[[110.0, 220.0]], &[[100.0, 200.0]]).unwrap(), [1.0, 0.0, 0.0, 1.0, 10.0, 20.0]);
+    // Two pairs: the new sheet was plotted at half size and a quarter turn clockwise, then
+    // moved. The fit turns and scales it back.
+    let old = [[100.0, 100.0], [300.0, 100.0]];
+    let new = [[50.0, 400.0], [50.0, 300.0]];
+    let m = alignment(&old, &new).unwrap();
+    assert!(close(apply(m, new[0]), old[0]) && close(apply(m, new[1]), old[1]), "{m:?}");
+    assert!((m[0] * m[3] - m[1] * m[2] - 4.0).abs() < 1e-9, "twice the size each way: {m:?}");
+    // A third point the same placement carries over lands where expected.
+    assert!(close(apply(m, [150.0, 400.0]), [100.0, 300.0]), "{:?}", apply(m, [150.0, 400.0]));
+    // Three pairs: stretched 10% across only, which two pairs can't fit.
+    let new3 = [[0.0, 0.0], [100.0, 0.0], [0.0, 100.0]];
+    let old3 = [[5.0, 7.0], [115.0, 7.0], [5.0, 107.0]];
+    let m = alignment(&old3, &new3).unwrap();
+    assert!(new3.iter().zip(&old3).all(|(n, o)| close(apply(m, *n), *o)), "{m:?}");
+    assert!((m[0] - 1.1).abs() < 1e-9 && (m[3] - 1.0).abs() < 1e-9, "{m:?}");
+
+    // Mismatched counts, repeated or lined-up points, wild scales and junk are refused.
+    let refused = [
+        alignment(&[], &[]),
+        alignment(&[[0.0, 0.0]], &[[0.0, 0.0], [1.0, 1.0]]),
+        alignment(&[[0.0, 0.0]; 4], &[[0.0, 0.0]; 4]),
+        alignment(&[[0.0, 0.0], [100.0, 0.0]], &[[5.0, 5.0], [5.2, 5.0]]),
+        alignment(&old3, &[[0.0, 0.0], [50.0, 50.0], [100.0, 100.0]]),
+        alignment(&[[0.0, 0.0], [1000.0, 0.0]], &[[0.0, 0.0], [10.0, 0.0]]),
+        alignment(&[[f64::NAN, 0.0]], &[[0.0, 0.0]]),
+        alignment(&[[1e300, 0.0]], &[[0.0, 0.0]]),
+    ];
+    for (i, r) in refused.iter().enumerate() {
+        assert!(r.is_err(), "case {i}: {r:?}");
+    }
+}
+
+#[test]
 fn initial_view_round_trips_and_keeps_scripts() {
     use crate::view::{Layout, Magnification, Navigation};
     let mut doc = open(fixture());

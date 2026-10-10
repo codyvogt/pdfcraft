@@ -2016,6 +2016,113 @@ fn comparing_two_versions_of_a_document() {
     assert!(marks[0].contents.as_deref().unwrap().starts_with("Replaced: \"Monday.\""));
 }
 
+/// A one-page 100 × 100 PDF drawing `content`.
+fn one_page(content: &str) -> Arc<Vec<u8>> {
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R /Resources << >> >>".into(),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+    ];
+    let mut pdf = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        pdf.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    Arc::new(pdf)
+}
+
+#[test]
+fn overlay_shows_old_only_red_new_only_blue_and_shared_dark() {
+    // Both versions have a black strip at x 0–30. Only the old one has a strip at 30–60 (drawn
+    // blue, so it must be greyed before tinting); only the new one has one at 60–90. The new
+    // version relies on the initial black fill, as most pages do, so the white paper's fill
+    // must not leak into it.
+    let v1 = one_page("0 g 0 0 30 100 re f 0 0 1 rg 30 0 30 100 re f");
+    let v2 = one_page("0 0 30 100 re f 60 0 30 100 re f");
+    let mut s = Session::new();
+    let old = s.open("v1.pdf", None, v1, None).unwrap();
+    let new = s.open("v2.pdf", None, v2, None).unwrap();
+    let bytes = s.compare_overlay(old, new, &compare::OverlayOptions::default()).unwrap();
+    let id = s.open("overlay.pdf", None, bytes, None).unwrap();
+    let row = |s: &Session| {
+        let doc = s.get(id).unwrap();
+        let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), doc.config.clone());
+        let p = r.render(pdfcraft_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
+        assert!(p.error.is_none(), "{:?}", p.error);
+        assert_eq!((p.width, p.height), (100, 100));
+        let at = |x: usize| -> [u8; 3] {
+            let i = (50 * p.width as usize + x) * 4;
+            p.rgba[i..i + 3].try_into().unwrap()
+        };
+        [at(15), at(45), at(75), at(95)]
+    };
+    let [shared, old_only, new_only, empty] = row(&s);
+    assert!(shared.iter().all(|c| *c < 40), "shared lines are dark: {shared:?}");
+    assert!(old_only[0] > 200 && old_only[1] < 80 && old_only[2] < 80, "old-only is red: {old_only:?}");
+    assert!(new_only[0] < 40 && new_only[1] < 40 && new_only[2] > 200, "new-only is blue: {new_only:?}");
+    assert!(empty.iter().all(|c| *c > 245), "paper stays white: {empty:?}");
+
+    // Each version is a layer; hiding Old leaves the new version alone, in blue.
+    let layers: Vec<_> = s.get(id).unwrap().info.layers.iter().map(|l| (l.name.clone(), l.visible)).collect();
+    assert_eq!(layers, [("Old".to_string(), true), ("New".to_string(), true)]);
+    let old_layer = s.get(id).unwrap().info.layers[0].id;
+    assert!(s.set_layer_state(id, &[(LayerOp::Off, old_layer)], false));
+    let [shared, old_only, new_only, _] = row(&s);
+    assert!(shared[2] > 200 && shared[0] < 40, "shared lines in the new colour: {shared:?}");
+    assert!(old_only.iter().all(|c| *c > 245), "old-only lines hidden: {old_only:?}");
+    assert!(new_only[2] > 200 && new_only[0] < 40, "{new_only:?}");
+
+    // A placement that cannot be undone is refused, not drawn.
+    let flat = compare::OverlayOptions { new_transform: [0.0; 6], ..Default::default() };
+    assert!(s.compare_overlay(old, new, &flat).is_err());
+}
+
+#[test]
+fn aligned_overlay_lines_up_a_shifted_sheet() {
+    // The same strip, plotted 10 pt further right on the new sheet.
+    let v1 = one_page("0 g 20 0 20 100 re f");
+    let v2 = one_page("0 g 30 0 20 100 re f");
+    let mut s = Session::new();
+    let old = s.open("v1.pdf", None, v1, None).unwrap();
+    let new = s.open("v2.pdf", None, v2, None).unwrap();
+    let row = |s: &mut Session, opts: &compare::OverlayOptions| {
+        let bytes = s.compare_overlay(old, new, opts).unwrap();
+        let doc = s.open("overlay.pdf", None, bytes, None).unwrap();
+        let d = s.get(doc).unwrap();
+        let mut r = pdfcraft_render::PageRenderer::new(d.bytes.clone(), d.config.clone());
+        let p = r.render(pdfcraft_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
+        // The sheet grows to hold both placements; its right edge stays at x = 100.
+        let left_edge = 100 - p.width as i64;
+        let at = |x: i64| -> [u8; 3] {
+            let i = (50 * p.width as usize + (x - left_edge) as usize) * 4;
+            p.rgba[i..i + 3].try_into().unwrap()
+        };
+        [at(25), at(45)]
+    };
+    // Unaligned, the strip's edges show as changes.
+    let [left, right] = row(&mut s, &Default::default());
+    assert!(left[0] > 200 && left[2] < 80, "old-only edge red: {left:?}");
+    assert!(right[2] > 200 && right[0] < 80, "new-only edge blue: {right:?}");
+    // The top-left corner of the strip picked on each sheet (view space, y down).
+    let m = s.overlay_alignment((old, 0, &[[20.0, 0.0]]), (new, 0, &[[30.0, 0.0]])).unwrap();
+    assert_eq!(m, [1.0, 0.0, 0.0, 1.0, -10.0, 0.0]);
+    let [left, right] = row(&mut s, &compare::OverlayOptions { new_transform: m, ..Default::default() });
+    assert!(left.iter().all(|c| *c < 40), "the strips coincide: {left:?}");
+    assert!(right.iter().all(|c| *c > 245), "nothing left over: {right:?}");
+    // Two picks with the y flip: a point near the top and one near the bottom of each strip.
+    let m2 = s.overlay_alignment((old, 0, &[[20.0, 10.0], [20.0, 90.0]]), (new, 0, &[[30.0, 10.0], [30.0, 90.0]])).unwrap();
+    assert!(m2.iter().zip(&m).all(|(a, b)| (a - b).abs() < 1e-9), "{m2:?}");
+    assert!(s.overlay_alignment((old, 3, &[[0.0, 0.0]]), (new, 0, &[[0.0, 0.0]])).is_err(), "no such page");
+}
+
 #[test]
 fn actions_run_their_steps_on_files() {
     let s = Session::new();

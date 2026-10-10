@@ -936,6 +936,8 @@
 	Visual	Visual
 	Mark as comments	Marcar como comentarios
 	Report…	Informe…
+	Overlay pages	Superponer páginas
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Un PDF nuevo con las páginas antiguas en rojo bajo las nuevas en azul: las líneas comunes salen oscuras.
 	{kind} · page {p}	{kind} · página {p}
 	Set Alternate Text	Definir texto alternativo
 	This document has no tagged figures.	Este documento no tiene figuras etiquetadas.
@@ -2083,3 +2085,23 @@ key	Space	Espacio
 	Collapse all	Contraer todo
 	Remove page	Quitar página
 	Remove {n} pages	Quitar {n} páginas
+	Overlay Pages	Superponer páginas
+	Lines both versions share come out dark; lines only one has keep its colour.	Las líneas comunes a ambas versiones salen oscuras; las de una sola versión conservan su color.
+	Line up by matching points	Alinear por puntos coincidentes
+	Points on each file:	Puntos en cada archivo:
+	One point shifts the new pages.	Un punto desplaza las páginas nuevas.
+	Two points shift, turn and scale the new pages evenly.	Dos puntos desplazan, giran y escalan las páginas nuevas de forma uniforme.
+	Three points also fit a sheet stretched more one way than the other.	Tres puntos también corrigen una hoja estirada más en un sentido que en otro.
+	{n} of {count} points	{n} de {count} puntos
+	Pick points…	Elegir puntos…
+	Clear points	Borrar puntos
+	Create overlay	Crear superposición
+	Shift {x}, {y} pt	Desplazamiento {x}, {y} pt
+	 · turn {a}°	 · giro {a}°
+	 · scale {s}%	 · escala {s} %
+	 · scale {x}% across, {y}% down	 · escala {x} % a lo ancho, {y} % a lo alto
+	Click point {i} of {n} on the old file (Esc cancels)	Haga clic en el punto {i} de {n} en el archivo antiguo (Esc para cancelar)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Haga clic en el punto {i} de {n} en el archivo nuevo, en los mismos lugares y en el mismo orden (Esc para cancelar)
+	Pick all the points on page {p}	Elija todos los puntos en la página {p}
+	Stopped picking alignment points	Se dejó de elegir puntos de alineación
+	Pick the alignment points on both files first	Elija primero los puntos de alineación en ambos archivos
