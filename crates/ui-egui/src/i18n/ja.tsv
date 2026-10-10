@@ -2146,3 +2146,12 @@ signature pad	Type	入力
 	Fill colour	塗りつぶし色
 	No fill	塗りつぶしなし
 	Fill colour: none	塗りつぶし色: なし
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	スペース

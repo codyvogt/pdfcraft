@@ -2059,3 +2059,12 @@
 	Fill colour	Цвет заливки
 	No fill	Без заливки
 	Fill colour: none	Цвет заливки: нет
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	Пробел

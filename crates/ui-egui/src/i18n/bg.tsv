@@ -2108,3 +2108,12 @@ action wizard	Start	Старт
 	Fill colour	Цвят на запълване
 	No fill	Без запълване
 	Fill colour: none	Цвят на запълване: няма
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	Интервал

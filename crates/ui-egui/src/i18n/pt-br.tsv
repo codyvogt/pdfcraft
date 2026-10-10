@@ -2147,3 +2147,12 @@ comment menu	Edit	Editar
 	Fill colour	Cor de preenchimento
 	No fill	Sem preenchimento
 	Fill colour: none	Cor de preenchimento: nenhuma
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	Espaço

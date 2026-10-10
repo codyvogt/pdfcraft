@@ -2169,3 +2169,12 @@ certificate	Subject	Власник сертифіката
 	Fill colour	Колір заливки
 	No fill	Без заливки
 	Fill colour: none	Колір заливки: немає
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	Пробіл

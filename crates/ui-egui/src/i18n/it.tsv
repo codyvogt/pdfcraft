@@ -2155,3 +2155,12 @@ signature pad	Type	Digita
 	Fill colour	Colore riempimento
 	No fill	Nessun riempimento
 	Fill colour: none	Colore riempimento: nessuno
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Maiusc
+key	Delete	Canc
+key	Esc	Esc
+key	Home	Home
+key	End	Fine
+key	Space	Spazio

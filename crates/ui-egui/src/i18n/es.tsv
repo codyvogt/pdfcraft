@@ -2062,3 +2062,12 @@
 	Fill colour	Color de relleno
 	No fill	Sin relleno
 	Fill colour: none	Color de relleno: ninguno
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Mayús
+key	Delete	Supr
+key	Esc	Esc
+key	Home	Inicio
+key	End	Fin
+key	Space	Espacio

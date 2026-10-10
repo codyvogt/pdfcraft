@@ -2146,3 +2146,12 @@ signature pad	Type	Saisir
 	Fill colour	Couleur de fond
 	No fill	Sans fond
 	Fill colour: none	Couleur de fond : aucune
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Maj
+key	Delete	Suppr
+key	Esc	Échap
+key	Home	Début
+key	End	Fin
+key	Space	Espace

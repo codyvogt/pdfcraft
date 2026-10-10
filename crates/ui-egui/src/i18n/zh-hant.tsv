@@ -2032,3 +2032,12 @@
 	Fill colour	填充顏色
 	No fill	無填充
 	Fill colour: none	填充顏色：無
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	空格

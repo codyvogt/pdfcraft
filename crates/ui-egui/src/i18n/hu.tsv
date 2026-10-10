@@ -2144,3 +2144,12 @@ action wizard	Start	Indítás
 	Fill colour	Kitöltőszín
 	No fill	Nincs kitöltés
 	Fill colour: none	Kitöltőszín: nincs
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	Szóköz

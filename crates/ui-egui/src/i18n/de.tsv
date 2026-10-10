@@ -2146,3 +2146,12 @@ action wizard	Start	Starten
 	Fill colour	Füllfarbe
 	No fill	Keine Füllung
 	Fill colour: none	Füllfarbe: keine
+
+# Keyboard key names, distinct from command labels.
+key	Ctrl	Strg
+key	Shift	Umschalt
+key	Delete	Entf
+key	Esc	Esc
+key	Home	Pos1
+key	End	Ende
+key	Space	Leertaste
