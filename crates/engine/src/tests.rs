@@ -2183,6 +2183,17 @@ fn revision_clouds_go_around_what_changed() {
     let (_, none) = s.compare_overlay_clouds(old, old, &compare::OverlayOptions::default()).unwrap();
     assert_eq!(none, 0);
     assert!(s.change_regions(old, new, [f64::NAN; 6]).is_err());
+
+    // A revision letter changes too few pixels to tell from a re-plot; the word comparison
+    // still clouds it.
+    let a = s.create_from_text("t", "Sheet A-101 Rev A").unwrap();
+    let b = s.create_from_text("t", "Sheet A-101 Rev B").unwrap();
+    let (ra, rb) = (s.open("a.pdf", None, a, None).unwrap(), s.open("b.pdf", None, b, None).unwrap());
+    let regions = s.change_regions(ra, rb, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]).unwrap();
+    assert_eq!(regions.len(), 1, "{regions:?}");
+    assert_eq!(regions[0].kind, clouds::ChangeKind::Changed, "{regions:?}");
+    let letter = s.get(rb).unwrap().info.pages[0].height as f64 - 709.0; // the line's baseline in view space
+    assert!(regions[0].rect[1] < letter && regions[0].rect[3] > letter - 8.0, "around the line: {regions:?}");
 }
 
 #[test]

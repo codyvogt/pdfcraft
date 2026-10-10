@@ -102,9 +102,36 @@ impl Session {
                         ChangeRegion { page, rect, page_height: hb, kind }
                     })
                     .collect();
-            merge_overlapping(&mut found);
-            out.extend(found);
+            out.append(&mut found);
         }
+        // Text changes, from the word comparison: a revision letter or one digit of a dimension
+        // changes too few pixels to tell from a re-plot, but the words say exactly what changed.
+        if let (Ok(text), Some(doc)) = (self.compare(old, new), self.get(new)) {
+            for ch in &text.changes {
+                let (rects, kind) = match ch.kind {
+                    pdfcraft_compare::Kind::Replaced => (ch.new.rects.clone(), ChangeKind::Changed),
+                    pdfcraft_compare::Kind::Inserted => (ch.new.rects.clone(), ChangeKind::Added),
+                    // Where the words were, beside their old neighbours.
+                    pdfcraft_compare::Kind::Deleted => (ch.new.near.into_iter().collect(), ChangeKind::Removed),
+                };
+                let page = ch.new.page;
+                let Some(info) = doc.info.pages.get(page).filter(|_| page < pages) else { continue };
+                let (w, h) = (f64::from(info.width), f64::from(info.height));
+                for r in rects {
+                    let (p, q) = (info.user_to_view(r[0] as f32, r[1] as f32), info.user_to_view(r[2] as f32, r[3] as f32));
+                    let rect = [
+                        (f64::from(p[0].min(q[0])) - CLOUD_PAD).max(0.0),
+                        (f64::from(p[1].min(q[1])) - CLOUD_PAD).max(0.0),
+                        (f64::from(p[0].max(q[0])) + CLOUD_PAD).min(w),
+                        (f64::from(p[1].max(q[1])) + CLOUD_PAD).min(h),
+                    ];
+                    if rect.iter().all(|v| v.is_finite()) && rect[2] > rect[0] && rect[3] > rect[1] {
+                        out.push(ChangeRegion { page, rect, page_height: h, kind });
+                    }
+                }
+            }
+        }
+        merge_overlapping(&mut out);
         Ok(out)
     }
 
