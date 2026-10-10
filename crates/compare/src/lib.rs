@@ -8,7 +8,9 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod align;
+mod changes;
 pub use align::{Fit, auto_align};
+pub use changes::{ChangedRegion, changed_regions};
 
 /// A word of one document.
 #[derive(Clone, Debug, PartialEq)]

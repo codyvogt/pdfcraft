@@ -579,6 +579,7 @@ impl Automation {
             "doc_compare_report" => self.doc_compare_report(&a)?,
             "doc_compare_mark" => self.doc_compare_mark(&a)?,
             "doc_compare_overlay" => self.doc_compare_overlay(&a)?,
+            "doc_compare_clouds" => self.doc_compare_clouds(&a)?,
             "form_set_actions" => self.form_set_actions(&a)?,
             "ocr_status" => self.ocr_status()?,
             "ocr_recognize_files" => self.ocr_recognize_files(&a)?,

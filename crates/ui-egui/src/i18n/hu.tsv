@@ -2165,3 +2165,35 @@ key	Space	Szóköz
 	Collapse all	Összes összecsukása
 	Remove page	Oldal eltávolítása
 	Remove {n} pages	{n} oldal eltávolítása
+	Overlay pages	Oldalak egymásra helyezése
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Új PDF, amelyben a régi oldalak pirosan, az újak kéken vannak egymáson: a közös vonalak sötétek.
+	Overlay Pages	Oldalak egymásra helyezése
+	Lines both versions share come out dark; lines only one has keep its colour.	A mindkét változatban meglévő vonalak sötétek; a csak az egyikben lévők megtartják annak színét.
+	Line up the new pages:	Az új oldalak igazítása:
+	Automatically	Automatikusan
+	By matching points	Megfelelő pontok alapján
+	Lower-left corners together	Bal alsó sarkok egymáson
+	Points on each file:	Pontok fájlonként:
+	One point shifts the new pages.	Egy pont eltolja az új oldalakat.
+	Two points shift, turn and scale the new pages evenly.	Két pont eltolja, elforgatja és egyenletesen méretezi az új oldalakat.
+	Three points also fit a sheet stretched more one way than the other.	Három pont az egyik irányban jobban megnyúlt lapot is igazítja.
+	Snap to line ends and crossings	Illesztés vonalvégekhez és metszéspontokhoz
+	{n} of {count} points	{n}/{count} pont
+	Pick points…	Pontok kijelölése…
+	Clear points	Pontok törlése
+	Create overlay	Átfedés létrehozása
+	Shift {x}, {y} pt	Eltolás: {x}, {y} pt
+	turn {a}°	elforgatás: {a}°
+	scale {s}%	méretarány: {s}%
+	scale {x}% across, {y}% down	méretarány: {x}% vízszintesen, {y}% függőlegesen
+	{p}% of the lines match	a vonalak {p}%-a egyezik
+	Click point {i} of {n} on the old file (Esc cancels)	Kattints a(z) {i}. pontra ({n} közül) a régi fájlban (Esc: mégse)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Kattints a(z) {i}. pontra ({n} közül) az új fájlban, ugyanazokra a helyekre ugyanabban a sorrendben (Esc: mégse)
+	Pick all the points on page {p}	Minden pontot a(z) {p}. oldalon jelölj ki
+	Stopped picking alignment points	Az igazítási pontok kijelölése leállítva
+	Pick the alignment points on both files first	Előbb jelöld ki az igazítási pontokat mindkét fájlban
+	Cloud the changes on the overlay	Változások felhőzése az átfedésen
+	Also cloud them on the new file	Felhőzés az új fájlban is
+	Added 1 revision cloud	1 revíziós felhő hozzáadva
+	Added {n} revision clouds	{n} revíziós felhő hozzáadva
+	No changes found to cloud	Nincs felhőzendő változás

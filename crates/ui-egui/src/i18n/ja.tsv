@@ -942,8 +942,6 @@
 	Visual	外観
 	Mark as comments	注釈としてマーク
 	Report…	レポート…
-	Overlay pages	ページを重ね合わせ
-	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	旧ページを赤、新ページを青で重ねた新しい PDF を作成します。共通の線は濃く表示されます。
 	{kind} · page {p}	{kind} · ページ {p}
 	Set Alternate Text	代替テキストを設定
 	This document has no tagged figures.	この文書にはタグ付きの図がありません。
@@ -2169,6 +2167,8 @@ key	Space	スペース
 	Collapse all	すべて折りたたむ
 	Remove page	ページを削除
 	Remove {n} pages	{n} ページを削除
+	Overlay pages	ページを重ね合わせ
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	旧ページを赤、新ページを青で重ねた新しい PDF を作成します。共通の線は濃く表示されます。
 	Overlay Pages	ページを重ね合わせ
 	Lines both versions share come out dark; lines only one has keep its colour.	両方の版に共通する線は濃く、片方だけの線はその版の色で表示されます。
 	Points on each file:	各ファイルの点の数：
@@ -2180,9 +2180,6 @@ key	Space	スペース
 	Clear points	点をクリア
 	Create overlay	重ね合わせを作成
 	Shift {x}, {y} pt	移動 {x}, {y} pt
-	 · turn {a}°	 · 回転 {a}°
-	 · scale {s}%	 · 倍率 {s}%
-	 · scale {x}% across, {y}% down	 · 倍率 横 {x}%、縦 {y}%
 	Click point {i} of {n} on the old file (Esc cancels)	旧ファイルで {n} 点中 {i} 点目をクリックしてください（Esc で取り消し）
 	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	新ファイルで同じ箇所を同じ順に {n} 点中 {i} 点目をクリックしてください（Esc で取り消し）
 	Pick all the points on page {p}	すべての点を {p} ページで選択してください
@@ -2193,4 +2190,12 @@ key	Space	スペース
 	Automatically	自動
 	By matching points	対応する点で
 	Lower-left corners together	左下隅をそろえる
-	 · {p}% of the lines match	 · 線の {p}% が一致
+	turn {a}°	回転 {a}°
+	scale {s}%	倍率 {s}%
+	scale {x}% across, {y}% down	倍率 横 {x}%、縦 {y}%
+	{p}% of the lines match	線の {p}% が一致
+	Cloud the changes on the overlay	重ね合わせ上の変更箇所を雲形で囲む
+	Also cloud them on the new file	新ファイルにも雲形を付ける
+	Added 1 revision cloud	改訂の雲形を 1 個追加しました
+	Added {n} revision clouds	改訂の雲形を {n} 個追加しました
+	No changes found to cloud	雲形で囲む変更は見つかりませんでした

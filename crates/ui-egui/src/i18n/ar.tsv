@@ -2189,3 +2189,35 @@ key	Space	مسافة
 	Collapse all	طي الكل
 	Remove page	إزالة الصفحة
 	Remove {n} pages	إزالة {n} صفحات
+	Overlay pages	تراكب الصفحات
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	ملف PDF جديد بالصفحات القديمة بالأحمر تحت الجديدة بالأزرق: الخطوط المشتركة تظهر داكنة.
+	Overlay Pages	تراكب الصفحات
+	Lines both versions share come out dark; lines only one has keep its colour.	الخطوط المشتركة بين النسختين تظهر داكنة؛ والخطوط الموجودة في نسخة واحدة تحتفظ بلونها.
+	Line up the new pages:	محاذاة الصفحات الجديدة:
+	Automatically	تلقائيًا
+	By matching points	بنقاط متطابقة
+	Lower-left corners together	الزوايا السفلية اليسرى معًا
+	Points on each file:	النقاط في كل ملف:
+	One point shifts the new pages.	نقطة واحدة تُزيح الصفحات الجديدة.
+	Two points shift, turn and scale the new pages evenly.	نقطتان تُزيحان الصفحات الجديدة وتُديرانها وتغيّران حجمها بالتساوي.
+	Three points also fit a sheet stretched more one way than the other.	ثلاث نقاط تلائم أيضًا ورقة مشدودة في اتجاه أكثر من الآخر.
+	Snap to line ends and crossings	الالتقاط إلى نهايات الخطوط وتقاطعاتها
+	{n} of {count} points	{n} من {count} نقاط
+	Pick points…	اختيار النقاط…
+	Clear points	مسح النقاط
+	Create overlay	إنشاء التراكب
+	Shift {x}, {y} pt	إزاحة {x}، {y} pt
+	turn {a}°	دوران {a}°
+	scale {s}%	مقياس {s}%
+	scale {x}% across, {y}% down	مقياس {x}% عرضًا، {y}% طولًا
+	{p}% of the lines match	{p}% من الخطوط متطابقة
+	Click point {i} of {n} on the old file (Esc cancels)	انقر النقطة {i} من {n} في الملف القديم (Esc للإلغاء)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	انقر النقطة {i} من {n} في الملف الجديد، على المعالم نفسها وبالترتيب نفسه (Esc للإلغاء)
+	Pick all the points on page {p}	اختر جميع النقاط في الصفحة {p}
+	Stopped picking alignment points	توقف اختيار نقاط المحاذاة
+	Pick the alignment points on both files first	اختر نقاط المحاذاة في الملفين أولًا
+	Cloud the changes on the overlay	إحاطة التغييرات بسحب على التراكب
+	Also cloud them on the new file	إحاطتها بسحب في الملف الجديد أيضًا
+	Added 1 revision cloud	أُضيفت سحابة مراجعة واحدة
+	Added {n} revision clouds	أُضيفت {n} سحب مراجعة
+	No changes found to cloud	لم يُعثر على تغييرات لإحاطتها

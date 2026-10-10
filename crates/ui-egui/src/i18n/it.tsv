@@ -2176,3 +2176,35 @@ key	Space	Spazio
 	Collapse all	Comprimi tutto
 	Remove page	Rimuovi pagina
 	Remove {n} pages	Rimuovi {n} pagine
+	Overlay pages	Sovrapponi pagine
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Un nuovo PDF con le pagine precedenti in rosso sotto quelle nuove in blu: le linee comuni risultano scure.
+	Overlay Pages	Sovrapponi pagine
+	Lines both versions share come out dark; lines only one has keep its colour.	Le linee comuni alle due versioni risultano scure; quelle di una sola versione ne mantengono il colore.
+	Line up the new pages:	Allinea le nuove pagine:
+	Automatically	Automaticamente
+	By matching points	Con punti corrispondenti
+	Lower-left corners together	Angoli inferiori sinistri uniti
+	Points on each file:	Punti per file:
+	One point shifts the new pages.	Un punto sposta le nuove pagine.
+	Two points shift, turn and scale the new pages evenly.	Due punti spostano, ruotano e scalano uniformemente le nuove pagine.
+	Three points also fit a sheet stretched more one way than the other.	Tre punti correggono anche un foglio allungato più in un senso che nell'altro.
+	Snap to line ends and crossings	Aggancia a estremità e incroci delle linee
+	{n} of {count} points	{n} di {count} punti
+	Pick points…	Scegli punti…
+	Clear points	Cancella punti
+	Create overlay	Crea sovrapposizione
+	Shift {x}, {y} pt	Spostamento {x}, {y} pt
+	turn {a}°	rotazione {a}°
+	scale {s}%	scala {s}%
+	scale {x}% across, {y}% down	scala {x}% in larghezza, {y}% in altezza
+	{p}% of the lines match	{p}% delle linee corrisponde
+	Click point {i} of {n} on the old file (Esc cancels)	Fai clic sul punto {i} di {n} nel file precedente (Esc annulla)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Fai clic sul punto {i} di {n} nel file nuovo, sugli stessi elementi e nello stesso ordine (Esc annulla)
+	Pick all the points on page {p}	Scegli tutti i punti a pagina {p}
+	Stopped picking alignment points	Scelta dei punti di allineamento interrotta
+	Pick the alignment points on both files first	Scegli prima i punti di allineamento in entrambi i file
+	Cloud the changes on the overlay	Evidenzia le modifiche con nuvole nella sovrapposizione
+	Also cloud them on the new file	Evidenziale anche nel file nuovo
+	Added 1 revision cloud	Aggiunta 1 nuvola di revisione
+	Added {n} revision clouds	Aggiunte {n} nuvole di revisione
+	No changes found to cloud	Nessuna modifica da evidenziare

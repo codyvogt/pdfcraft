@@ -2176,3 +2176,35 @@ key	Esc	Esc
 key	Home	Home
 key	End	End
 key	Space	Spacja
+	Overlay pages	Nałóż strony
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Nowy PDF ze starymi stronami na czerwono pod nowymi na niebiesko: wspólne linie wychodzą ciemne.
+	Overlay Pages	Nakładanie stron
+	Lines both versions share come out dark; lines only one has keep its colour.	Linie wspólne dla obu wersji wychodzą ciemne; linie tylko jednej wersji zachowują jej kolor.
+	Line up the new pages:	Wyrównaj nowe strony:
+	Automatically	Automatycznie
+	By matching points	Według odpowiadających punktów
+	Lower-left corners together	Lewe dolne rogi razem
+	Points on each file:	Punkty w każdym pliku:
+	One point shifts the new pages.	Jeden punkt przesuwa nowe strony.
+	Two points shift, turn and scale the new pages evenly.	Dwa punkty przesuwają, obracają i równomiernie skalują nowe strony.
+	Three points also fit a sheet stretched more one way than the other.	Trzy punkty dopasowują też arkusz rozciągnięty bardziej w jednym kierunku niż w drugim.
+	Snap to line ends and crossings	Przyciągaj do końców i przecięć linii
+	{n} of {count} points	{n} z {count} punktów
+	Pick points…	Wybierz punkty…
+	Clear points	Wyczyść punkty
+	Create overlay	Utwórz nakładkę
+	Shift {x}, {y} pt	Przesunięcie {x}, {y} pt
+	turn {a}°	obrót {a}°
+	scale {s}%	skala {s}%
+	scale {x}% across, {y}% down	skala {x}% w poziomie, {y}% w pionie
+	{p}% of the lines match	zgodność linii: {p}%
+	Click point {i} of {n} on the old file (Esc cancels)	Kliknij punkt {i} z {n} w starym pliku (Esc anuluje)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Kliknij punkt {i} z {n} w nowym pliku, te same miejsca w tej samej kolejności (Esc anuluje)
+	Pick all the points on page {p}	Wybierz wszystkie punkty na stronie {p}
+	Stopped picking alignment points	Zatrzymano wybieranie punktów wyrównania
+	Pick the alignment points on both files first	Najpierw wybierz punkty wyrównania w obu plikach
+	Cloud the changes on the overlay	Zaznacz zmiany chmurkami na nakładce
+	Also cloud them on the new file	Zaznacz je też w nowym pliku
+	Added 1 revision cloud	Dodano 1 chmurkę zmian
+	Added {n} revision clouds	Liczba dodanych chmurek zmian: {n}
+	No changes found to cloud	Nie znaleziono zmian do zaznaczenia

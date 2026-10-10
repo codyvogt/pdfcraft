@@ -2190,3 +2190,35 @@ key	Space	Пробіл
 	Collapse all	Згорнути всі
 	Remove page	Видалити сторінку
 	Remove {n} pages	Видалити сторінки: {n}
+	Overlay pages	Накласти сторінки
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Новий PDF зі старими сторінками червоним під новими синіми: спільні лінії виходять темними.
+	Overlay Pages	Накладання сторінок
+	Lines both versions share come out dark; lines only one has keep its colour.	Лінії, спільні для обох версій, виходять темними; лінії лише однієї версії зберігають її колір.
+	Line up the new pages:	Вирівняти нові сторінки:
+	Automatically	Автоматично
+	By matching points	За відповідними точками
+	Lower-left corners together	Сумістити ліві нижні кути
+	Points on each file:	Точок у кожному файлі:
+	One point shifts the new pages.	Одна точка зсуває нові сторінки.
+	Two points shift, turn and scale the new pages evenly.	Дві точки зсувають, повертають і рівномірно масштабують нові сторінки.
+	Three points also fit a sheet stretched more one way than the other.	Три точки припасовують і аркуш, розтягнутий в одному напрямку сильніше, ніж в іншому.
+	Snap to line ends and crossings	Прив'язка до кінців і перетинів ліній
+	{n} of {count} points	{n} з {count} точок
+	Pick points…	Вибрати точки…
+	Clear points	Очистити точки
+	Create overlay	Створити накладання
+	Shift {x}, {y} pt	Зсув {x}, {y} pt
+	turn {a}°	поворот {a}°
+	scale {s}%	масштаб {s}%
+	scale {x}% across, {y}% down	масштаб {x}% за шириною, {y}% за висотою
+	{p}% of the lines match	збігається {p}% ліній
+	Click point {i} of {n} on the old file (Esc cancels)	Клацніть точку {i} з {n} у старому файлі (Esc — скасувати)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Клацніть точку {i} з {n} у новому файлі — ті самі місця в тому самому порядку (Esc — скасувати)
+	Pick all the points on page {p}	Виберіть усі точки на сторінці {p}
+	Stopped picking alignment points	Вибір точок вирівнювання зупинено
+	Pick the alignment points on both files first	Спочатку виберіть точки вирівнювання в обох файлах
+	Cloud the changes on the overlay	Обвести зміни хмарами на накладанні
+	Also cloud them on the new file	Обвести їх і в новому файлі
+	Added 1 revision cloud	Додано хмар редакції: 1
+	Added {n} revision clouds	Додано хмар редакції: {n}
+	No changes found to cloud	Змін для хмар не знайдено

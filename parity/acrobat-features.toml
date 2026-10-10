@@ -9090,6 +9090,18 @@ evidence = ["crates/organize/src/tests.rs::overlay_pairs_pages_on_two_layers", "
 notes = "Beyond Acrobat: drawing-revision overlay as in Bluebeam Revu. A new vector PDF; old greyed and tinted red, new tinted blue, multiplied (shared lines dark); each version a layer. Overlay Pages dialog: colours, and alignment by clicking 1-3 matching points on each version (shift; shift, turn and even scale; or full affine), picked points snap to line ends and crossings; or automatic alignment (shift, scale 50-200% and slight turn found from the renderings, refused below 50% two-way overlap); all also through the tool. Not yet: page-pair choice, drawing annotations, revision clouds."
 
 [[feature]]
+id = "misc.compare-revision-clouds"
+title = "Revision clouds around the changes between two versions"
+area = "N"
+tier = "P2"
+milestone = "M12"
+status = "shipped"
+commands = ["doc.compare"]
+tools = ["doc_compare_clouds", "doc_compare_overlay"]
+evidence = ["crates/compare/src/changes.rs::finds_what_was_added_and_removed", "crates/compare/src/changes.rs::regions_follow_the_alignment", "crates/compare/src/changes.rs::small_misalignment_and_weight_changes_are_not_changes", "crates/engine/src/tests.rs::revision_clouds_go_around_what_changed", "crates/automation/tests/automation.rs::comparing_documents_through_tools", "crates/ui-egui/tests/compare.rs::overlay_lines_up_automatically"]
+notes = "Beyond Acrobat (Bluebeam-style). Pages are compared as drawn once lined up with the overlay placement: ink with no ink of the other version within about 0.8 pt is a change; nearby changes form one region, padded 6 pt and merged where they overlap. Each becomes a Cloud comment (orange, authored Compare, saying Added, Removed or Changed) on the overlay and, on request, on the new file as one undoable step. Not yet: clouds that follow the shape of the change rather than its box, one placement per page pair (page 1's is used for all), choosing page pairs, telling moved content from removed-and-added."
+
+[[feature]]
 id = "misc.compare-side-by-side"
 title = "Side-by-side compare view with synchronised scrolling"
 area = "N"

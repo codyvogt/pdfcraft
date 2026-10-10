@@ -52,6 +52,9 @@ fn measure_schema() -> Value {
     )
 }
 
+/// The `align` property of the Overlay Pages and revision-cloud tools.
+const ALIGN_DESCRIPTION: &str = "Line the versions up (overrides offset and matrix). \"auto\" (or {\"auto\": true, \"old_page\": 1, \"new_page\": 1}) finds the shift, scale and slight turn from the drawings themselves and reports how much ink it lines up as matched (0–1); it fails when the pages aren't the same sheet. Or matching points: {\"old\": [[x, y], …], \"new\": [[x, y], …], \"old_page\": 1, \"new_page\": 1}, the same 1–3 features on each, as points on the displayed page from its top-left corner; one pair shifts, two also turn and scale evenly, three fit any stretch. Pages are 1-based, page 1 by default.";
+
 fn color() -> Value {
     json!({ "type": "string", "description": "#RRGGBB or a name: yellow, red, orange, green, blue, purple, pink, black, gray, white." })
 }
@@ -885,10 +888,22 @@ pub fn tools() -> Vec<ToolDef> {
                     "offset": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Shift the new pages by [dx, dy] points (right, up) to line them up." },
                     "matrix": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6, "description": "Place the new pages with this PDF matrix [a b c d e f] instead (overrides offset)." },
                     "align": {
-                        "description": "Line the versions up (overrides offset and matrix). \"auto\" (or {\"auto\": true, \"old_page\": 1, \"new_page\": 1}) finds the shift, scale and slight turn from the drawings themselves and reports how much ink it lines up as matched (0–1); it fails when the pages aren't the same sheet. Or matching points: {\"old\": [[x, y], …], \"new\": [[x, y], …], \"old_page\": 1, \"new_page\": 1}, the same 1–3 features on each, as points on the displayed page from its top-left corner; one pair shifts, two also turn and scale evenly, three fit any stretch. Pages are 1-based, page 1 by default.",
+                        "description": ALIGN_DESCRIPTION,
                     },
+                    "clouds": { "type": "boolean", "description": "Also draw a revision cloud (a Cloud comment saying added, removed or changed) around each area where the versions differ once placed; returns their number as clouds." },
                 }),
                 &["doc", "other", "path"],
+            )),
+        t("doc_compare_clouds", "Cloud the changes", "Draw revision clouds on doc (newer): a Cloud comment (orange, authored Compare, saying added, removed or changed) around each area where page n of doc differs from page n of other (older), compared as drawn once lined up (offset, matrix or align as for doc_compare_overlay; \"auto\" is usually right). One undoable step. Returns clouds and each region: page (1-based), rect (points from the top-left of the displayed page) and kind.")
+            .cmd("doc.compare")
+            .with(schema(
+                json!({
+                    "doc": doc(), "other": { "type": "integer", "description": "The older document (from doc_open)." },
+                    "offset": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Shift the new pages by [dx, dy] points (right, up)." },
+                    "matrix": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6, "description": "Place the new pages with this PDF matrix [a b c d e f] (overrides offset)." },
+                    "align": { "description": ALIGN_DESCRIPTION },
+                }),
+                &["doc", "other"],
             )),
         t("doc_compare_mark", "Mark differences as comments", "Add the differences from other (older) to doc (newer) as comments in doc: highlights over replaced (blue) and inserted (green) text, notes where text was deleted (red), authored Compare. Undoable.")
             .cmd("doc.compare")

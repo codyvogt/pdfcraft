@@ -2129,3 +2129,35 @@ key	Space	Интервал
 	Collapse all	Свий всички
 	Remove page	Премахни страницата
 	Remove {n} pages	Премахни {n} страници
+	Overlay pages	Наслагване на страници
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Нов PDF със старите страници в червено под новите в синьо: общите линии излизат тъмни.
+	Overlay Pages	Наслагване на страници
+	Lines both versions share come out dark; lines only one has keep its colour.	Линиите, общи за двете версии, излизат тъмни; линиите само в едната запазват нейния цвят.
+	Line up the new pages:	Подравняване на новите страници:
+	Automatically	Автоматично
+	By matching points	По съответни точки
+	Lower-left corners together	Долните леви ъгли заедно
+	Points on each file:	Точки във всеки файл:
+	One point shifts the new pages.	Една точка измества новите страници.
+	Two points shift, turn and scale the new pages evenly.	Две точки изместват, завъртат и мащабират равномерно новите страници.
+	Three points also fit a sheet stretched more one way than the other.	Три точки напасват и лист, разтегнат повече в едната посока.
+	Snap to line ends and crossings	Прилепване към краища и пресичания на линии
+	{n} of {count} points	{n} от {count} точки
+	Pick points…	Избери точки…
+	Clear points	Изчисти точките
+	Create overlay	Създай наслагване
+	Shift {x}, {y} pt	Изместване {x}, {y} pt
+	turn {a}°	завъртане {a}°
+	scale {s}%	мащаб {s}%
+	scale {x}% across, {y}% down	мащаб {x}% по ширина, {y}% по височина
+	{p}% of the lines match	{p}% от линиите съвпадат
+	Click point {i} of {n} on the old file (Esc cancels)	Щракнете върху точка {i} от {n} в стария файл (Esc отказва)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Щракнете върху точка {i} от {n} в новия файл – същите места в същия ред (Esc отказва)
+	Pick all the points on page {p}	Изберете всички точки на страница {p}
+	Stopped picking alignment points	Изборът на точки за подравняване е спрян
+	Pick the alignment points on both files first	Първо изберете точките за подравняване в двата файла
+	Cloud the changes on the overlay	Облаци около промените в наслагването
+	Also cloud them on the new file	Облаци и в новия файл
+	Added 1 revision cloud	Добавен е 1 облак за ревизия
+	Added {n} revision clouds	Добавени са {n} облака за ревизия
+	No changes found to cloud	Не са открити промени за облаци

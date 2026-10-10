@@ -936,8 +936,6 @@
 	Visual	Visual
 	Mark as comments	Marcar como comentarios
 	Report…	Informe…
-	Overlay pages	Superponer páginas
-	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Un PDF nuevo con las páginas antiguas en rojo bajo las nuevas en azul: las líneas comunes salen oscuras.
 	{kind} · page {p}	{kind} · página {p}
 	Set Alternate Text	Definir texto alternativo
 	This document has no tagged figures.	Este documento no tiene figuras etiquetadas.
@@ -2085,6 +2083,8 @@ key	Space	Espacio
 	Collapse all	Contraer todo
 	Remove page	Quitar página
 	Remove {n} pages	Quitar {n} páginas
+	Overlay pages	Superponer páginas
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Un PDF nuevo con las páginas antiguas en rojo bajo las nuevas en azul: las líneas comunes salen oscuras.
 	Overlay Pages	Superponer páginas
 	Lines both versions share come out dark; lines only one has keep its colour.	Las líneas comunes a ambas versiones salen oscuras; las de una sola versión conservan su color.
 	Points on each file:	Puntos en cada archivo:
@@ -2096,9 +2096,6 @@ key	Space	Espacio
 	Clear points	Borrar puntos
 	Create overlay	Crear superposición
 	Shift {x}, {y} pt	Desplazamiento {x}, {y} pt
-	 · turn {a}°	 · giro {a}°
-	 · scale {s}%	 · escala {s} %
-	 · scale {x}% across, {y}% down	 · escala {x} % a lo ancho, {y} % a lo alto
 	Click point {i} of {n} on the old file (Esc cancels)	Haga clic en el punto {i} de {n} en el archivo antiguo (Esc para cancelar)
 	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Haga clic en el punto {i} de {n} en el archivo nuevo, en los mismos lugares y en el mismo orden (Esc para cancelar)
 	Pick all the points on page {p}	Elija todos los puntos en la página {p}
@@ -2109,4 +2106,12 @@ key	Space	Espacio
 	Automatically	Automáticamente
 	By matching points	Por puntos coincidentes
 	Lower-left corners together	Esquinas inferiores izquierdas juntas
-	 · {p}% of the lines match	 · coincide el {p} % de las líneas
+	turn {a}°	giro {a}°
+	scale {s}%	escala {s} %
+	scale {x}% across, {y}% down	escala {x} % a lo ancho, {y} % a lo alto
+	{p}% of the lines match	coincide el {p} % de las líneas
+	Cloud the changes on the overlay	Marcar los cambios con nubes en la superposición
+	Also cloud them on the new file	Marcarlos también en el archivo nuevo
+	Added 1 revision cloud	Se añadió 1 nube de revisión
+	Added {n} revision clouds	Se añadieron {n} nubes de revisión
+	No changes found to cloud	No se encontraron cambios para marcar

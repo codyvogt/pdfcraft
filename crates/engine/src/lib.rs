@@ -14,6 +14,7 @@
 
 pub mod actions;
 pub mod catalog;
+pub mod clouds;
 pub mod commands;
 pub mod compare;
 pub mod dates;

@@ -153,9 +153,20 @@ fn overlay_lines_up_automatically() {
     let m = found.transform;
     assert!((m[4] + 12.0).abs() < 0.6 && (m[5] - 7.0).abs() < 0.6 && (m[0] - 1.0).abs() < 0.002, "{found:?}");
     h.get_by_label_contains("of the lines match");
+    // The revision is clouded on the overlay (on by default) and, asked, on the new file.
+    h.get_by_label("Also cloud them on the new file").click();
+    h.run_steps(2);
     h.get_by_label("Create overlay").click();
     h.run_steps(3);
-    assert_eq!(h.state().session.get(h.state().active_ids().unwrap().1).unwrap().name, "Overlay.pdf");
+    let overlay = h.state().session.get(h.state().active_ids().unwrap().1).unwrap();
+    assert_eq!(overlay.name, "Overlay.pdf");
+    let cloud = |d: &pdfcraft_engine::Document| {
+        d.info.annotations.iter().filter(|a| a.subtype == "Polygon" && a.author.as_deref() == Some("Compare")).count()
+    };
+    assert_eq!(cloud(overlay), 1);
+    let newer = h.state().session.get(new).unwrap();
+    assert_eq!((cloud(newer), newer.can_undo()), (1, Some("Cloud changes")));
+    assert_eq!(h.state().toast.clone().unwrap().0, "Added 1 revision cloud");
 
     // A blank page can't be lined up: the reason shows and Create stays off until another
     // choice is made.

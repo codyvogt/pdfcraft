@@ -2142,6 +2142,50 @@ fn automatic_alignment_finds_shift_and_scale() {
 }
 
 #[test]
+fn revision_clouds_go_around_what_changed() {
+    let mut s = Session::new();
+    let old = s.open("v1.pdf", None, letter_page(PLAN), None).unwrap();
+    // Moved 12 pt right and 7 pt down, with one added line from (100, 150) to (300, 250) in the
+    // new page's space: in view space (y down), x 100–300 and y 542–642.
+    let new = s.open("v2.pdf", None, letter_page(&format!("q 1 0 0 1 12 -7 cm {PLAN} Q 2 w 100 150 m 300 250 l S")), None).unwrap();
+    let placement = s.overlay_auto_alignment((old, 0), (new, 0)).unwrap().transform;
+    let regions = s.change_regions(old, new, placement).unwrap();
+    assert_eq!(regions.len(), 1, "only the added line, not the moved plan: {regions:?}");
+    let r = &regions[0];
+    assert_eq!((r.page, r.kind), (0, clouds::ChangeKind::Added), "{r:?}");
+    let [x0, y0, x1, y1] = r.rect;
+    assert!(x0 < 100.0 && x1 > 300.0 && y0 < 542.0 && y1 > 642.0, "around the line: {r:?}");
+    assert!(x0 > 80.0 && x1 < 320.0 && y0 > 520.0 && y1 < 665.0, "and close to it: {r:?}");
+    // Unaligned, the whole moved plan reads as changed: one cloud over most of the sheet.
+    let area = |r: &clouds::ChangeRegion| (r.rect[2] - r.rect[0]) * (r.rect[3] - r.rect[1]);
+    let unaligned = s.change_regions(old, new, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]).unwrap();
+    assert!(unaligned.iter().map(area).sum::<f64>() > 200_000.0, "{unaligned:?}");
+    assert!(s.change_regions(old, old, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]).unwrap().is_empty(), "a page against itself");
+
+    // Clouds on the new version: one undoable step of Cloud comments.
+    assert_eq!(s.add_change_clouds(new, &regions, None).unwrap(), 1);
+    let d = s.get(new).unwrap();
+    assert_eq!(d.can_undo(), Some("Cloud changes"));
+    let cloud = d.info.annotations.iter().find(|a| a.author.as_deref() == Some("Compare")).unwrap();
+    assert_eq!((cloud.subtype.as_str(), cloud.contents.as_deref()), ("Polygon", Some("Added")));
+    // The cloud's box (user space, y up) holds the line: y 150–250 there.
+    assert!(cloud.rect[0] < 100.0 && cloud.rect[2] > 300.0 && cloud.rect[1] < 150.0 && cloud.rect[3] > 250.0, "{:?}", cloud.rect);
+
+    // An overlay with the changes clouded: on the overlay's page, the line sits where the
+    // placement carries it.
+    let opts = compare::OverlayOptions { new_transform: placement, ..Default::default() };
+    let (bytes, n) = s.compare_overlay_clouds(old, new, &opts).unwrap();
+    assert_eq!(n, 1);
+    let overlay = s.open("overlay.pdf", None, bytes, None).unwrap();
+    let a = &s.get(overlay).unwrap().info.annotations;
+    assert_eq!(a.len(), 1, "{a:?}");
+    assert!(a[0].rect[0] < 100.0 - 12.0 && a[0].rect[2] > 300.0 - 12.0 && a[0].rect[1] < 157.0, "{:?}", a[0].rect);
+    let (_, none) = s.compare_overlay_clouds(old, old, &compare::OverlayOptions::default()).unwrap();
+    assert_eq!(none, 0);
+    assert!(s.change_regions(old, new, [f64::NAN; 6]).is_err());
+}
+
+#[test]
 fn aligned_overlay_lines_up_a_shifted_sheet() {
     // The same strip, plotted 10 pt further right on the new sheet.
     let v1 = one_page("0 g 20 0 20 100 re f");

@@ -2167,3 +2167,35 @@ key	Space	Leertaste
 	Collapse all	Alle einklappen
 	Remove page	Seite entfernen
 	Remove {n} pages	{n} Seiten entfernen
+	Overlay pages	Seiten überlagern
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	Ein neues PDF mit den alten Seiten in Rot unter den neuen in Blau: Linien, die beide haben, erscheinen dunkel.
+	Overlay Pages	Seiten überlagern
+	Lines both versions share come out dark; lines only one has keep its colour.	Linien, die beide Versionen haben, erscheinen dunkel; Linien nur einer Version behalten deren Farbe.
+	Line up the new pages:	Neue Seiten ausrichten:
+	Automatically	Automatisch
+	By matching points	An übereinstimmenden Punkten
+	Lower-left corners together	Linke untere Ecken aufeinander
+	Points on each file:	Punkte je Datei:
+	One point shifts the new pages.	Ein Punkt verschiebt die neuen Seiten.
+	Two points shift, turn and scale the new pages evenly.	Zwei Punkte verschieben, drehen und skalieren die neuen Seiten gleichmäßig.
+	Three points also fit a sheet stretched more one way than the other.	Drei Punkte gleichen auch ein Blatt an, das in eine Richtung stärker gedehnt ist.
+	Snap to line ends and crossings	An Linienenden und Kreuzungen einrasten
+	{n} of {count} points	{n} von {count} Punkten
+	Pick points…	Punkte wählen…
+	Clear points	Punkte löschen
+	Create overlay	Überlagerung erstellen
+	Shift {x}, {y} pt	Verschiebung {x}, {y} pt
+	turn {a}°	Drehung {a}°
+	scale {s}%	Maßstab {s} %
+	scale {x}% across, {y}% down	Maßstab {x} % breit, {y} % hoch
+	{p}% of the lines match	{p} % der Linien stimmen überein
+	Click point {i} of {n} on the old file (Esc cancels)	Klicke Punkt {i} von {n} in der alten Datei an (Esc bricht ab)
+	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	Klicke Punkt {i} von {n} in der neuen Datei an, dieselben Stellen in derselben Reihenfolge (Esc bricht ab)
+	Pick all the points on page {p}	Wähle alle Punkte auf Seite {p}
+	Stopped picking alignment points	Auswahl der Ausrichtungspunkte beendet
+	Pick the alignment points on both files first	Wähle zuerst die Ausrichtungspunkte in beiden Dateien
+	Cloud the changes on the overlay	Änderungen in der Überlagerung mit Wolken markieren
+	Also cloud them on the new file	Auch in der neuen Datei mit Wolken markieren
+	Added 1 revision cloud	1 Revisionswolke hinzugefügt
+	Added {n} revision clouds	{n} Revisionswolken hinzugefügt
+	No changes found to cloud	Keine Änderungen zum Markieren gefunden

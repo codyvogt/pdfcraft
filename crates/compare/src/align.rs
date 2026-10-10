@@ -317,14 +317,14 @@ impl Distances {
 }
 
 /// Which pixels are ink.
-struct Mask {
-    w: usize,
-    h: usize,
+pub(crate) struct Mask {
+    pub(crate) w: usize,
+    pub(crate) h: usize,
     ink: Vec<bool>,
 }
 
 impl Mask {
-    fn from_rgba((px, w, h): (&[u8], u32, u32)) -> Option<Mask> {
+    pub(crate) fn from_rgba((px, w, h): (&[u8], u32, u32)) -> Option<Mask> {
         if w == 0 || h == 0 || w > MAX_SIDE || h > MAX_SIDE {
             return None;
         }
@@ -339,7 +339,7 @@ impl Mask {
         Some(Mask { w, h, ink })
     }
 
-    fn get(&self, x: i64, y: i64) -> bool {
+    pub(crate) fn get(&self, x: i64, y: i64) -> bool {
         x >= 0 && y >= 0 && (x as usize) < self.w && (y as usize) < self.h && self.ink.get(y as usize * self.w + x as usize).copied().unwrap_or(false)
     }
 
@@ -356,7 +356,7 @@ impl Mask {
     }
 
     /// Grown by a pixel each way, so near misses count.
-    fn dilate(&self) -> Mask {
+    pub(crate) fn dilate(&self) -> Mask {
         let ink = (0..self.w * self.h)
             .map(|i| {
                 let (x, y) = ((i % self.w) as i64, (i / self.w) as i64);

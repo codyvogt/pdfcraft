@@ -641,8 +641,6 @@
 	Visual	视觉
 	Mark as comments	标记为注释
 	Report…	报告…
-	Overlay pages	叠加页面
-	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	生成新的 PDF：旧页面为红色，新页面为蓝色叠加其上；两者共有的线条显示为深色。
 	{kind} · page {p}	{kind} · 第 {p} 页
 	Set Alternate Text	设置替代文本
 	This document has no tagged figures.	本文档没有带标记的图形。
@@ -2133,6 +2131,8 @@ key	Space	空格
 	Collapse all	全部折叠
 	Remove page	删除页面
 	Remove {n} pages	删除 {n} 页
+	Overlay pages	叠加页面
+	A new PDF with the old pages in red under the new ones in blue: lines both share are dark.	生成新的 PDF：旧页面为红色，新页面为蓝色叠加其上；两者共有的线条显示为深色。
 	Overlay Pages	叠加页面
 	Lines both versions share come out dark; lines only one has keep its colour.	两个版本共有的线条显示为深色；只在一个版本中的线条保留该版本的颜色。
 	Points on each file:	每个文件的点数：
@@ -2144,9 +2144,6 @@ key	Space	空格
 	Clear points	清除点
 	Create overlay	创建叠加
 	Shift {x}, {y} pt	平移 {x}, {y} pt
-	 · turn {a}°	 · 旋转 {a}°
-	 · scale {s}%	 · 缩放 {s}%
-	 · scale {x}% across, {y}% down	 · 缩放 横向 {x}%，纵向 {y}%
 	Click point {i} of {n} on the old file (Esc cancels)	请在旧文件上点击第 {i} 个点（共 {n} 个，按 Esc 取消）
 	Click point {i} of {n} on the new file, the same features in the same order (Esc cancels)	请在新文件上按相同顺序点击相同位置的第 {i} 个点（共 {n} 个，按 Esc 取消）
 	Pick all the points on page {p}	请在第 {p} 页上选取所有点
@@ -2157,4 +2154,12 @@ key	Space	空格
 	Automatically	自动
 	By matching points	按对应点
 	Lower-left corners together	左下角对齐
-	 · {p}% of the lines match	 · {p}% 的线条吻合
+	turn {a}°	旋转 {a}°
+	scale {s}%	缩放 {s}%
+	scale {x}% across, {y}% down	缩放 横向 {x}%，纵向 {y}%
+	{p}% of the lines match	{p}% 的线条吻合
+	Cloud the changes on the overlay	在叠加结果上用云线标出更改
+	Also cloud them on the new file	同时在新文件上标出
+	Added 1 revision cloud	已添加 1 个修订云线
+	Added {n} revision clouds	已添加 {n} 个修订云线
+	No changes found to cloud	未找到需要标出的更改

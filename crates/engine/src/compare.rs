@@ -17,7 +17,7 @@ pub struct AutoAlignment {
 }
 
 /// Automatic alignment renders the old page at about this many pixels on its longer side.
-const ALIGN_SIDE: f32 = 2000.0;
+pub(crate) const ALIGN_SIDE: f32 = 2000.0;
 
 /// Below this share of ink lined up, automatic alignment gives up.
 const MIN_ALIGN_SCORE: f64 = 0.5;
@@ -131,33 +131,12 @@ impl Session {
     /// on the old page's (0–1). Fails when either page is blank, or no placement lines up even
     /// half of the ink (different sheets, or turned too far: pick points instead).
     pub fn overlay_auto_alignment(&self, (old, old_page): (DocId, usize), (new, new_page): (DocId, usize)) -> Result<AutoAlignment, EditError> {
-        let render = |id: DocId, page: usize, scale: f32| -> Result<(pdfcraft_render::RenderedPage, f64, f64), EditError> {
-            let doc = self.get(id).ok_or(EditError::NoDocument)?;
-            let info = doc.info.pages.get(page).ok_or(pdfcraft_organize::OrganizeError::NoSuchPage(page))?;
-            let mut r = pdfcraft_render::PageRenderer::new(
-                doc.bytes.clone(),
-                pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(Arc::from), ..Default::default() },
-            );
-            let out = r.render(pdfcraft_render::RenderRequest { page, scale, ..Default::default() });
-            match out.error.clone() {
-                Some(e) => Err(pdfcraft_organize::OrganizeError::Invalid(format!("page {} of {} couldn't be drawn: {e}", page + 1, doc.name)).into()),
-                // Pixels per point as drawn (the renderer may cap very large pages), and the
-                // page height in points.
-                None => {
-                    let k = f64::from(out.width) / f64::from(info.width.max(1e-3));
-                    Ok((out, k, f64::from(info.height)))
-                }
-            }
-        };
         // About ALIGN_SIDE pixels along the old page's longer side; the new page at the same
         // resolution, so a difference in plotting scale shows.
         let size = self.get(old).and_then(|d| d.info.pages.get(old_page)).map_or(792.0, |p| p.width.max(p.height).max(1.0));
         let scale = (ALIGN_SIDE / size).clamp(0.1, 4.0);
-        let (a, ka, ha) = render(old, old_page, scale)?;
-        let (b, kb, hb) = render(new, new_page, scale)?;
-        if !(ka > 0.0 && kb > 0.0 && ka.is_finite() && kb.is_finite()) {
-            return Err(pdfcraft_organize::OrganizeError::Invalid("a page couldn't be drawn to line up".into()).into());
-        }
+        let (a, ka, _, ha) = self.render_for_compare(old, old_page, scale)?;
+        let (b, kb, _, hb) = self.render_for_compare(new, new_page, scale)?;
         let bad = |why: &str| EditError::from(pdfcraft_organize::OrganizeError::Invalid(why.to_string()));
         let fit = pdfcraft_compare::auto_align((&a.rgba, a.width, a.height), (&b.rgba, b.width, b.height))
             .ok_or_else(|| bad("a page has too little drawn on it to line up automatically"))?;
@@ -173,6 +152,27 @@ impl Session {
         });
         let transform = pdfcraft_organize::alignment(&old_pts, &new_pts)?;
         Ok(AutoAlignment { transform, score: fit.score })
+    }
+
+    /// Page `page` of `id` rendered at `scale` for alignment and change finding, with the
+    /// pixels per point it was actually drawn at (the renderer may cap very large pages) and the
+    /// page's displayed width and height in points.
+    pub(crate) fn render_for_compare(&self, id: DocId, page: usize, scale: f32) -> Result<(pdfcraft_render::RenderedPage, f64, f64, f64), EditError> {
+        let doc = self.get(id).ok_or(EditError::NoDocument)?;
+        let info = doc.info.pages.get(page).ok_or(pdfcraft_organize::OrganizeError::NoSuchPage(page))?;
+        let mut r = pdfcraft_render::PageRenderer::new(
+            doc.bytes.clone(),
+            pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(Arc::from), ..Default::default() },
+        );
+        let out = r.render(pdfcraft_render::RenderRequest { page, scale, ..Default::default() });
+        if let Some(e) = out.error.clone() {
+            return Err(pdfcraft_organize::OrganizeError::Invalid(format!("page {} of {} couldn't be drawn: {e}", page + 1, doc.name)).into());
+        }
+        let k = f64::from(out.width) / f64::from(info.width.max(1e-3));
+        if !(k > 0.0 && k.is_finite()) {
+            return Err(pdfcraft_organize::OrganizeError::Invalid(format!("page {} of {} couldn't be drawn", page + 1, doc.name)).into());
+        }
+        Ok((out, k, f64::from(info.width), f64::from(info.height)))
     }
 
     /// The compare report as a new PDF (not opened).

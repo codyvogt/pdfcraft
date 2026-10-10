@@ -36,6 +36,9 @@ pub struct OverlaySetup {
     pub picking: Option<Side>,
     /// Snap picked points to line ends and crossings in the drawing.
     pub snap: bool,
+    /// Draw revision clouds around the changes on the overlay, and on the new file itself.
+    pub cloud_overlay: bool,
+    pub cloud_new: bool,
 }
 
 /// How Overlay Pages places the new pages on the old ones.
@@ -66,6 +69,8 @@ impl OverlaySetup {
             new_points: Vec::new(),
             picking: None,
             snap: true,
+            cloud_overlay: true,
+            cloud_new: false,
         }
     }
 
@@ -104,16 +109,16 @@ fn describe(m: [f64; 6]) -> String {
     let fmt1 = |v: f64| format!("{:.1}", if v.abs() < 0.05 { 0.0 } else { v });
     let (sx, sy) = ((m[0] * m[0] + m[1] * m[1]).sqrt(), (m[2] * m[2] + m[3] * m[3]).sqrt());
     let turn = m[1].atan2(m[0]).to_degrees();
-    let mut s = crate::i18n::fmt(tl!("Shift {x}, {y} pt"), &[("x", &fmt1(m[4])), ("y", &fmt1(m[5]))]);
+    let mut parts = vec![crate::i18n::fmt(tl!("Shift {x}, {y} pt"), &[("x", &fmt1(m[4])), ("y", &fmt1(m[5]))])];
     if turn.abs() >= 0.05 {
-        s += &crate::i18n::fmt(tl!(" · turn {a}°"), &[("a", &fmt1(turn))]);
+        parts.push(crate::i18n::fmt(tl!("turn {a}°"), &[("a", &fmt1(turn))]));
     }
     if (sx - sy).abs() > 1e-3 * sx.max(sy) {
-        s += &crate::i18n::fmt(tl!(" · scale {x}% across, {y}% down"), &[("x", &fmt1(sx * 100.0)), ("y", &fmt1(sy * 100.0))]);
+        parts.push(crate::i18n::fmt(tl!("scale {x}% across, {y}% down"), &[("x", &fmt1(sx * 100.0)), ("y", &fmt1(sy * 100.0))]));
     } else if (sx - 1.0).abs() >= 5e-4 {
-        s += &crate::i18n::fmt(tl!(" · scale {s}%"), &[("s", &fmt1(sx * 100.0))]);
+        parts.push(crate::i18n::fmt(tl!("scale {s}%"), &[("s", &fmt1(sx * 100.0))]));
     }
-    s
+    parts.join(" · ")
 }
 
 /// What the dialog asks for.
@@ -153,7 +158,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
     if setup.line_up == LineUp::Auto {
         ui.indent("overlay-auto", |ui| match setup.auto.as_ref().map(|(_, r)| r) {
             Some(Ok(found)) => {
-                let matched = crate::i18n::fmt(tl!(" · {p}% of the lines match"), &[("p", &format!("{:.0}", found.score * 100.0))]);
+                let matched = " · ".to_string() + &crate::i18n::fmt(tl!("{p}% of the lines match"), &[("p", &format!("{:.0}", found.score * 100.0))]);
                 ui.label(egui::RichText::new(describe(found.transform) + &matched).color(t.text_muted));
             }
             Some(Err(e)) => {
@@ -164,7 +169,6 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
         });
     }
     ui.radio_value(&mut setup.line_up, LineUp::Points, tl!("By matching points"));
-    ui.radio_value(&mut setup.line_up, LineUp::Corners, tl!("Lower-left corners together"));
     if setup.line_up == LineUp::Points {
         ui.indent("overlay-align", |ui| {
             ui.horizontal(|ui| {
@@ -214,6 +218,10 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> Opti
             }
         });
     }
+    ui.radio_value(&mut setup.line_up, LineUp::Corners, tl!("Lower-left corners together"));
+    ui.add_space(10.0);
+    ui.checkbox(&mut setup.cloud_overlay, tl!("Cloud the changes on the overlay"));
+    ui.checkbox(&mut setup.cloud_new, tl!("Also cloud them on the new file"));
     ui.add_space(10.0);
     // The placement shown is for the points as they were when this frame started.
     let can_create = match setup.line_up {
@@ -280,13 +288,48 @@ impl PdfCraftApp {
             None => return self.notify_tr("Pick the alignment points on both files first"),
         };
         let opts = setup.options(placement);
-        match self.session.compare_overlay(setup.old, setup.new, &opts) {
-            Ok(bytes) => {
-                if let Err(e) = self.open_bytes("Overlay.pdf", None, bytes.to_vec()) {
-                    self.notify_error(e);
-                }
+        let (old, new, cloud_overlay, cloud_new) = (setup.old, setup.new, setup.cloud_overlay, setup.cloud_new);
+        // The changes, once placed, for the clouds.
+        let regions = if cloud_overlay || cloud_new {
+            match self.session.change_regions(old, new, placement) {
+                Ok(r) => r,
+                Err(e) => return self.notify_error(e),
             }
-            Err(e) => self.notify_error(e),
+        } else {
+            Vec::new()
+        };
+        let bytes = match self.session.compare_overlay(old, new, &opts) {
+            Ok(b) => b,
+            Err(e) => return self.notify_error(e),
+        };
+        if let Err(e) = self.open_bytes("Overlay.pdf", None, bytes.to_vec()) {
+            return self.notify_error(e);
+        }
+        if regions.is_empty() {
+            if cloud_overlay || cloud_new {
+                self.notify_tr("No changes found to cloud");
+            }
+            return;
+        }
+        let mut added = 0;
+        let targets = [(cloud_overlay, self.active_ids().map(|(_, id)| id), Some(placement)), (cloud_new, Some(new), None)];
+        for (wanted, target, place) in targets {
+            let (true, Some(target)) = (wanted, target) else { continue };
+            match self.session.add_change_clouds(target, &regions, place) {
+                Ok(n) => {
+                    added = added.max(n);
+                    let info = self.session.get(target).map(|d| d.info.clone());
+                    if let (Some(info), Some(view)) = (info, self.views.iter_mut().find(|v| v.id == target)) {
+                        view.document_changed(&info);
+                    }
+                }
+                Err(e) => return self.notify_error(e),
+            }
+        }
+        if added == 1 {
+            self.notify_tr("Added 1 revision cloud");
+        } else {
+            self.notify_fmt("Added {n} revision clouds", &[("n", &added.to_string())]);
         }
     }
 

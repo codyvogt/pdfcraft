@@ -416,7 +416,53 @@ impl Automation {
         Ok(json!({ "path": path.to_string_lossy(), "bytes": bytes.len() }))
     }
 
-    pub(crate) fn doc_compare_overlay(&self, a: &Args) -> Result<Value> {
+    /// The new pages' placement for Overlay Pages and revision clouds, from `offset`, `matrix` or
+    /// `align` (see the doc_compare_overlay schema), and automatic alignment's match when used.
+    fn overlay_placement(&self, a: &Args, old: pdfcraft_engine::DocId, new: pdfcraft_engine::DocId) -> Result<([f64; 6], Option<f64>)> {
+        let mut placement = pdfcraft_engine::compare::OverlayOptions::default().new_transform;
+        if let Some([dx, dy]) = a.nums::<2>("offset")? {
+            placement = [1.0, 0.0, 0.0, 1.0, dx, dy];
+        }
+        if let Some(m) = a.nums::<6>("matrix")? {
+            placement = m;
+        }
+        let Some(align) = a.get("align") else { return Ok((placement, None)) };
+        let wrong = || {
+            ToolError::InvalidArgs(
+                "align must be \"auto\", { auto: true, old_page?, new_page? } or { old: [[x, y], …], new: [[x, y], …], old_page?, new_page? }".into(),
+            )
+        };
+        let points = |key: &str| -> Result<Vec<[f64; 2]>> {
+            let list = align.get(key).and_then(Value::as_array).ok_or_else(wrong)?;
+            list.iter()
+                .take(4)
+                .map(|p| {
+                    let xy = p.as_array().filter(|xy| xy.len() == 2).ok_or_else(wrong)?;
+                    let n = |i: usize| xy.get(i).and_then(Value::as_f64).filter(|v| v.is_finite()).ok_or_else(wrong);
+                    Ok([n(0)?, n(1)?])
+                })
+                .collect()
+        };
+        // 1-based pages, page 1 by default.
+        let page = |key: &str| -> Result<usize> {
+            match align.get(key) {
+                None | Some(Value::Null) => Ok(0),
+                Some(v) => v.as_u64().filter(|p| *p >= 1).and_then(|p| usize::try_from(p - 1).ok()).ok_or_else(wrong),
+            }
+        };
+        let auto = align.as_str() == Some("auto") || align.get("auto").and_then(Value::as_bool) == Some(true);
+        if auto {
+            let found = self.session.overlay_auto_alignment((old, page("old_page")?), (new, page("new_page")?)).map_err(failed)?;
+            Ok((found.transform, Some(found.score)))
+        } else if align.is_object() {
+            let (op, np) = (points("old")?, points("new")?);
+            Ok((self.session.overlay_alignment((old, page("old_page")?, &op), (new, page("new_page")?, &np)).map_err(failed)?, None))
+        } else {
+            Err(wrong())
+        }
+    }
+
+    pub(crate) fn doc_compare_overlay(&mut self, a: &Args) -> Result<Value> {
         let (old, new) = self.compare_ids(a)?;
         let mut opts = pdfcraft_engine::compare::OverlayOptions::default();
         if let Some(c) = a.color("old_color")? {
@@ -425,55 +471,37 @@ impl Automation {
         if let Some(c) = a.color("new_color")? {
             opts.new_colour = c;
         }
-        if let Some([dx, dy]) = a.nums::<2>("offset")? {
-            opts.new_transform = [1.0, 0.0, 0.0, 1.0, dx, dy];
-        }
-        if let Some(m) = a.nums::<6>("matrix")? {
-            opts.new_transform = m;
-        }
-        let mut matched = None;
-        if let Some(align) = a.get("align") {
-            let wrong = || {
-                ToolError::InvalidArgs(
-                    "align must be \"auto\", { auto: true, old_page?, new_page? } or { old: [[x, y], …], new: [[x, y], …], old_page?, new_page? }"
-                        .into(),
-                )
-            };
-            let points = |key: &str| -> Result<Vec<[f64; 2]>> {
-                let list = align.get(key).and_then(Value::as_array).ok_or_else(wrong)?;
-                list.iter()
-                    .take(4)
-                    .map(|p| {
-                        let xy = p.as_array().filter(|xy| xy.len() == 2).ok_or_else(wrong)?;
-                        let n = |i: usize| xy.get(i).and_then(Value::as_f64).filter(|v| v.is_finite()).ok_or_else(wrong);
-                        Ok([n(0)?, n(1)?])
-                    })
-                    .collect()
-            };
-            // 1-based pages, page 1 by default.
-            let page = |key: &str| -> Result<usize> {
-                match align.get(key) {
-                    None | Some(Value::Null) => Ok(0),
-                    Some(v) => v.as_u64().filter(|p| *p >= 1).and_then(|p| usize::try_from(p - 1).ok()).ok_or_else(wrong),
-                }
-            };
-            let auto = align.as_str() == Some("auto") || align.get("auto").and_then(Value::as_bool) == Some(true);
-            if auto {
-                let found = self.session.overlay_auto_alignment((old, page("old_page")?), (new, page("new_page")?)).map_err(failed)?;
-                opts.new_transform = found.transform;
-                matched = Some(found.score);
-            } else if align.is_object() {
-                let (op, np) = (points("old")?, points("new")?);
-                opts.new_transform = self.session.overlay_alignment((old, page("old_page")?, &op), (new, page("new_page")?, &np)).map_err(failed)?;
-            } else {
-                return Err(wrong());
+        let (placement, matched) = self.overlay_placement(a, old, new)?;
+        opts.new_transform = placement;
+        let clouds = a.opt_bool("clouds")?.unwrap_or(false);
+        let path = self.resolve(a.str("path")?, true)?;
+        let (bytes, n) =
+            if clouds { self.session.compare_overlay_clouds(old, new, &opts) } else { self.session.compare_overlay(old, new, &opts).map(|b| (b, 0)) }
+                .map_err(failed)?;
+        write_atomic(&path, &bytes)?;
+        let mut out = json!({ "path": path.to_string_lossy(), "bytes": bytes.len(), "placement": placement.map(round4) });
+        if let Some(o) = out.as_object_mut() {
+            if let Some(score) = matched {
+                o.insert("matched".into(), json!((score * 1000.0).round() / 1000.0));
+            }
+            if clouds {
+                o.insert("clouds".into(), json!(n));
             }
         }
-        let bytes = self.session.compare_overlay(old, new, &opts).map_err(failed)?;
-        let path = self.resolve(a.str("path")?, true)?;
-        write_atomic(&path, &bytes)?;
-        let placement = opts.new_transform.map(|v| (v * 10_000.0).round() / 10_000.0);
-        let mut out = json!({ "path": path.to_string_lossy(), "bytes": bytes.len(), "placement": placement });
+        Ok(out)
+    }
+
+    pub(crate) fn doc_compare_clouds(&mut self, a: &Args) -> Result<Value> {
+        let (old, new) = self.compare_ids(a)?;
+        let (placement, matched) = self.overlay_placement(a, old, new)?;
+        let regions = self.session.change_regions(old, new, placement).map_err(failed)?;
+        let n = self.session.add_change_clouds(new, &regions, None).map_err(failed)?;
+        let list: Vec<Value> = regions
+            .iter()
+            .take(500)
+            .map(|r| json!({ "page": r.page + 1, "rect": r.rect.map(|v| (v * 100.0).round() / 100.0), "kind": r.kind.label().to_lowercase() }))
+            .collect();
+        let mut out = json!({ "clouds": n, "placement": placement.map(round4), "regions": list });
         if let (Some(score), Some(o)) = (matched, out.as_object_mut()) {
             o.insert("matched".into(), json!((score * 1000.0).round() / 1000.0));
         }
@@ -577,4 +605,9 @@ impl Automation {
         }
         Ok(json!({ "enabled": self.session.javascript() }))
     }
+}
+
+/// A placement entry rounded to 1/10 000 for reporting.
+fn round4(v: f64) -> f64 {
+    (v * 10_000.0).round() / 10_000.0
 }

@@ -3080,6 +3080,19 @@ fn comparing_documents_through_tools() {
     let align = json!({ "old": [[72, 72], [300, 72]], "new": [[80, 70], [308, 70]] });
     let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": v2, "other": v1, "path": "aligned.pdf", "align": align }));
     assert!(r["bytes"].as_u64().unwrap() > 0, "{r}");
+    // Revision clouds: on an overlay, and on the newer document (undoable).
+    let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": v2, "other": v1, "path": "clouded.pdf", "clouds": true }));
+    assert!(r["clouds"].as_u64().unwrap() >= 1, "{r}");
+    let r = ok(&mut a, "doc_compare_clouds", json!({ "doc": v2, "other": v1 }));
+    let n = r["clouds"].as_u64().unwrap();
+    assert!(n >= 1 && r["regions"].as_array().unwrap().len() as u64 == n, "{r}");
+    assert_eq!(r["regions"][0]["page"], 1, "{r}");
+    assert!(["added", "removed", "changed"].contains(&r["regions"][0]["kind"].as_str().unwrap()), "{r}");
+    let clouds = ok(&mut a, "comment_list", json!({ "doc": v2 }));
+    let from_compare = clouds["comments"].as_array().unwrap().iter().filter(|c| c["author"] == "Compare").count();
+    assert_eq!(from_compare as u64, n, "{clouds}");
+    ok(&mut a, "edit_undo", json!({ "doc": v2 }));
+    assert!(a.call("doc_compare_clouds", &json!({ "doc": v2, "other": v1, "align": "sideways" })).is_err());
     // Automatic alignment of two copies of a page finds them already in place.
     let copy = ok(&mut a, "doc_create", json!({ "from": "text", "text": "Rent is 900 per month. Pets are not allowed." }))["doc"].as_u64().unwrap();
     let r = ok(&mut a, "doc_compare_overlay", json!({ "doc": copy, "other": v1, "path": "auto.pdf", "align": "auto" }));
