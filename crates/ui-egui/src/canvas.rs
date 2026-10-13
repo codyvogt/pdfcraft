@@ -1239,10 +1239,11 @@ impl DocView {
         let Some(forward) = self.wheel.feed(unit, dy, phase, now, can_turn) else { return false };
         let before = self.current;
         self.step_page(forward);
-        if !forward {
+        let turned = self.current != before;
+        if turned && !forward {
             self.goto = Some((self.current, 1.0));
         }
-        self.current != before
+        turned
     }
 
     /// Displayed page size in points for this view rotation.
@@ -5260,6 +5261,12 @@ trailer << /Root 1 0 R >>
             v.step_page(false);
             assert_eq!((v.current, v.goto), (0, None), "{layout:?} {pages}: nothing before the first page");
         }
+        // Nor does the wheel, which shows a page turned back to from its bottom: on the first
+        // page, scrolling up past the top leaves it where it is.
+        let mut v = view(3, PageLayout::Single, false);
+        v.goto = None;
+        assert!(!notch(&mut v, 1.0, 1.0));
+        assert_eq!((v.current, v.goto), (0, None), "the wheel up on the first page stays at its top");
         // The second page of the first spread has nothing before it either.
         let mut v = view(4, PageLayout::TwoUp, false);
         v.go_to_page(1);
