@@ -1091,22 +1091,29 @@ impl DocView {
 
     /// Next page (`true`) or previous page. In two-page view this moves a whole spread: the other
     /// page of the spread is already on screen, so stepping to it wouldn't move the view (#70).
+    /// At either end of the document it does nothing: going to the page already shown would
+    /// scroll it back to its top, away from where the reader is (#1924).
     pub fn step_page(&mut self, forward: bool) {
         let c = self.current;
-        let target = match self.layout {
+        let last = self.page_count.saturating_sub(1);
+        let (target, first) = match self.layout {
             PageLayout::TwoUp => {
                 // Spreads are [0, 1], [2, 3], … or, with a cover page, [0], [1, 2], [3, 4], ….
                 let first = if self.cover { c.saturating_sub((c + 1) % 2) } else { c - c % 2 };
-                match (forward, self.cover && c == 0) {
+                let target = match (forward, self.cover && c == 0) {
                     (true, true) => 1,
                     (true, false) => first.saturating_add(2),
                     (false, _) if self.cover && first <= 1 => 0,
                     (false, _) => first.saturating_sub(2),
-                }
+                };
+                (target, first)
             }
-            PageLayout::Single if forward => c + 1,
-            PageLayout::Single => c.saturating_sub(1),
+            PageLayout::Single if forward => (c.saturating_add(1), c),
+            PageLayout::Single => (c.saturating_sub(1), c),
         };
+        if if forward { target > last } else { first == 0 } {
+            return;
+        }
         self.go_to_page(target);
     }
 
@@ -5236,6 +5243,29 @@ trailer << /Root 1 0 R >>
         assert!(!notch(&mut v, -1.0, 1.1), "nothing turns past the last page");
         assert!(notch(&mut v, 1.0, 1.2));
         assert_eq!(v.current, 1);
+    }
+
+    #[test]
+    fn stepping_past_either_end_leaves_the_view_alone() {
+        // On the last page, a step forward (the wheel past a zoomed-in page's bottom, ↓, Next
+        // Page) must not scroll that page back to its top; likewise back from the first (#1924).
+        for (layout, pages) in [(PageLayout::Single, 3), (PageLayout::TwoUp, 4), (PageLayout::TwoUp, 3)] {
+            let mut v = view(pages, layout, false);
+            v.go_to_page(pages - 1);
+            v.goto = None;
+            v.step_page(true);
+            assert_eq!((v.current, v.goto), (pages - 1, None), "{layout:?} {pages}: nothing after the last page");
+            v.go_to_page(0);
+            v.goto = None;
+            v.step_page(false);
+            assert_eq!((v.current, v.goto), (0, None), "{layout:?} {pages}: nothing before the first page");
+        }
+        // The second page of the first spread has nothing before it either.
+        let mut v = view(4, PageLayout::TwoUp, false);
+        v.go_to_page(1);
+        v.goto = None;
+        v.step_page(false);
+        assert_eq!((v.current, v.goto), (1, None));
     }
 
     #[test]
