@@ -199,6 +199,57 @@ fn single_page_wheel_pans_instead_when_zoomed_in() {
 }
 
 #[test]
+fn zoomed_in_single_page_wheel_turns_from_the_edges() {
+    // Acrobat's single-page view (#1924): zoomed in, the wheel pans to the page's bottom, then
+    // turns to the next page at its top; from the top it turns back to the previous page's bottom.
+    let mut h = harness_stepping(1.0 / 60.0, &[("layout", "single"), ("zoom", "200")]);
+    let at = h.state().views[0].viewport_rect().center();
+    h.hover_at(at);
+    h.run_steps(2);
+    let mut notches = 0;
+    while h.state().views[0].current == 0 && notches < 100 {
+        h.event(wheel(MouseWheelUnit::Line, -1.0, TouchPhase::Move));
+        h.run_steps(20);
+        notches += 1;
+    }
+    assert_eq!(h.state().views[0].current, 1, "scrolling on past the bottom turns the page");
+    assert!(notches > 2, "the wheel pans down the page before turning: turned after {notches} notches");
+    let view = h.state().views[0].viewport_rect();
+    let next = rect(&h, 1).expect("page 2 on screen");
+    assert!(next.min.y >= view.min.y && next.max.y > view.max.y, "page 2 shows from its top: {next:?} in {view:?}");
+    // Already at its top, so the next notch up turns straight back.
+    h.event(wheel(MouseWheelUnit::Line, 1.0, TouchPhase::Move));
+    h.run_steps(20);
+    assert_eq!(h.state().views[0].current, 0, "scrolling on past the top turns back");
+    let view = h.state().views[0].viewport_rect();
+    let prev = rect(&h, 0).expect("page 1 on screen");
+    assert!(prev.max.y <= view.max.y && prev.min.y < view.min.y, "page 1 shows from its bottom: {prev:?} in {view:?}");
+    // A trackpad swipe down from the bottom turns once, and its momentum doesn't scroll the
+    // page turned to away from its top.
+    let mut send = |phase, dy| {
+        h.event(wheel(MouseWheelUnit::Point, dy, phase));
+        h.step();
+    };
+    send(TouchPhase::Start, 0.0);
+    for _ in 0..6 {
+        send(TouchPhase::Move, -25.0);
+    }
+    send(TouchPhase::End, 0.0);
+    send(TouchPhase::Start, 0.0);
+    let mut d = -25.0;
+    while d < -0.5 {
+        send(TouchPhase::Move, d);
+        d *= 0.92;
+    }
+    send(TouchPhase::End, 0.0);
+    h.run_steps(30);
+    assert_eq!(h.state().views[0].current, 1, "one swipe turns one page");
+    let view = h.state().views[0].viewport_rect();
+    let next = rect(&h, 1).expect("page 2 on screen");
+    assert!(next.min.y >= view.min.y, "the swipe's momentum leaves page 2 at its top: {next:?} in {view:?}");
+}
+
+#[test]
 fn wheel_turns_one_page_per_notch_and_per_trackpad_swipe() {
     // At a real frame rate: brisk notches each turn a page, and one trackpad swipe turns one
     // page, its momentum included (macOS sends the momentum as a second Start…End).

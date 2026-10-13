@@ -1,5 +1,6 @@
 //! Wheel paging in single-page view: when the whole page fits, the mouse wheel and the
-//! trackpad turn pages instead of doing nothing.
+//! trackpad turn pages instead of doing nothing. Zoomed in, they pan, and turn the page once
+//! the view is at its bottom (forward) or its top (back), as Acrobat does (#1924).
 //!
 //! A wheel notch turns one page, however fast the notches come. That needs the raw
 //! `MouseWheel` events: egui's smoothed scroll delta spreads one notch over several frames, so
@@ -30,6 +31,23 @@ const DENSE_GAP_SECS: f64 = 0.02;
 const MOMENTUM_GAP_SECS: f64 = 0.1;
 /// A touch with no events for this long (seconds) has ended unseen: its `End` went elsewhere.
 const TOUCH_STALE_SECS: f64 = 1.0;
+
+/// The ways the page may turn now.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Turnable {
+    pub(crate) back: bool,
+    pub(crate) forward: bool,
+}
+
+impl Turnable {
+    pub(crate) const NONE: Self = Self { back: false, forward: false };
+    #[cfg(test)]
+    pub(crate) const BOTH: Self = Self { back: true, forward: true };
+
+    fn allows(self, forward: bool) -> bool {
+        if forward { self.forward } else { self.back }
+    }
+}
 
 /// The touch in progress.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,9 +88,9 @@ impl WheelPager {
     }
 
     /// Feed one `Event::MouseWheel`: `dy` is its vertical delta (negative scrolls forward) and
-    /// `now` is egui time. With `can_turn` false (the page doesn't fit, a dialog is open…) the
-    /// gesture is followed but never turns. Returns the way to turn (`true` = forward).
-    pub(crate) fn feed(&mut self, unit: MouseWheelUnit, dy: f32, phase: TouchPhase, now: f64, can_turn: bool) -> Option<bool> {
+    /// `now` is egui time. Motion a way `can_turn` doesn't allow (the page pans that way, a
+    /// dialog is open…) is followed but never turns. Returns the way to turn (`true` = forward).
+    pub(crate) fn feed(&mut self, unit: MouseWheelUnit, dy: f32, phase: TouchPhase, now: f64, can_turn: Turnable) -> Option<bool> {
         if !now.is_finite() {
             return None;
         }
@@ -105,11 +123,12 @@ impl WheelPager {
         self.turned = None;
     }
 
-    fn motion(&mut self, unit: MouseWheelUnit, dy: f32, now: f64, idle: f64, can_turn: bool) -> Option<bool> {
+    fn motion(&mut self, unit: MouseWheelUnit, dy: f32, now: f64, idle: f64, can_turn: Turnable) -> Option<bool> {
         if !dy.is_finite() || dy == 0.0 {
             return None;
         }
         let forward = dy < 0.0;
+        let can_turn = can_turn.allows(forward);
         let smooth_stream = self.touch.is_some() || now - self.last_smooth <= BURST_GAP_SECS;
         let notch = !smooth_stream
             && match unit {
@@ -134,7 +153,8 @@ impl WheelPager {
         }
         self.last_smooth = now;
         if !can_turn {
-            // Panning a page that doesn't fit: that motion must not count toward a turn later.
+            // Panning a page that doesn't fit: that motion must not count toward a turn later,
+            // so a swipe that reaches the edge moves a notch's worth past it before turning.
             self.accum = 0.0;
             return None;
         }
@@ -162,7 +182,7 @@ mod tests {
 
     /// Feeds `(unit, dy, phase, seconds)` events and returns the turns, in order.
     fn turns(pager: &mut WheelPager, events: &[(MouseWheelUnit, f32, TouchPhase, f64)]) -> Vec<bool> {
-        events.iter().filter_map(|&(unit, dy, phase, at)| pager.feed(unit, dy, phase, at, true)).collect()
+        events.iter().filter_map(|&(unit, dy, phase, at)| pager.feed(unit, dy, phase, at, Turnable::BOTH)).collect()
     }
 
     /// A trackpad swipe at 60 fps from `t`: six finger frames of `dy`, then momentum decaying
@@ -264,12 +284,31 @@ mod tests {
     #[test]
     fn nothing_turns_while_it_cannot_and_that_motion_does_not_count_later() {
         let mut p = WheelPager::default();
-        assert_eq!(p.feed(Line, -1.0, Move, 1.0, false), None);
-        assert_eq!(p.feed(Point, 0.0, Start, 2.0, false), None);
-        assert_eq!(p.feed(Point, -30.0, Move, 2.02, false), None);
+        assert_eq!(p.feed(Line, -1.0, Move, 1.0, Turnable::NONE), None);
+        assert_eq!(p.feed(Point, 0.0, Start, 2.0, Turnable::NONE), None);
+        assert_eq!(p.feed(Point, -30.0, Move, 2.02, Turnable::NONE), None);
         // The page fits now: the same touch has to move a full notch's worth again.
-        assert_eq!(p.feed(Point, -30.0, Move, 2.04, true), None);
-        assert_eq!(p.feed(Point, -30.0, Move, 2.06, true), Some(true));
+        assert_eq!(p.feed(Point, -30.0, Move, 2.04, Turnable::BOTH), None);
+        assert_eq!(p.feed(Point, -30.0, Move, 2.06, Turnable::BOTH), Some(true));
+    }
+
+    #[test]
+    fn at_an_edge_only_the_way_past_it_turns() {
+        // Zoomed in at the bottom of a page: scrolling up pans, scrolling down turns.
+        let bottom = Turnable { back: false, forward: true };
+        let mut p = WheelPager::default();
+        assert_eq!(p.feed(Line, 1.0, Move, 1.0, bottom), None);
+        assert_eq!(p.feed(Line, -1.0, Move, 1.1, bottom), Some(true));
+        // A swipe that pans down to the edge has to move a notch's worth past it to turn,
+        // and turns once, however long its momentum runs on.
+        let mut q = WheelPager::default();
+        assert_eq!(q.feed(Point, 0.0, Start, 2.0, bottom), None);
+        assert_eq!(q.feed(Point, -30.0, Move, 2.02, Turnable::NONE), None);
+        assert_eq!(q.feed(Point, -30.0, Move, 2.04, bottom), None);
+        assert_eq!(q.feed(Point, -30.0, Move, 2.06, bottom), Some(true));
+        let top = Turnable { back: true, forward: false };
+        assert_eq!(q.feed(Point, -30.0, Move, 2.08, top), None);
+        assert_eq!(q.feed(Point, -30.0, Move, 2.10, Turnable::BOTH), None, "one turn per swipe");
     }
 
     #[test]
@@ -284,10 +323,10 @@ mod tests {
     fn hostile_input_never_turns_more_than_once() {
         let mut p = WheelPager::default();
         for dy in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -0.0] {
-            assert_eq!(p.feed(Point, dy, Move, 1.0, true), None, "dy={dy}");
+            assert_eq!(p.feed(Point, dy, Move, 1.0, Turnable::BOTH), None, "dy={dy}");
         }
         for now in [f64::NAN, f64::INFINITY] {
-            assert_eq!(p.feed(Point, -50.0, Move, now, true), None, "now={now}");
+            assert_eq!(p.feed(Point, -50.0, Move, now, Turnable::BOTH), None, "now={now}");
         }
         // A huge notch is still one notch; a huge smooth delta is still one turn.
         assert_eq!(turns(&mut p, &[(Point, -1e30, Move, 2.0)]), [true]);
